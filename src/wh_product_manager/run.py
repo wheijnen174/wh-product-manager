@@ -13,7 +13,7 @@ def main():
     settings = Settings()
 
     uvicorn.run(
-        "src.wh_product_manager.main:app",
+        "wh_product_manager.main:app",
         host=settings.HOST,
         port=settings.PORT,
         log_level=settings.LOG_LEVEL.lower(),

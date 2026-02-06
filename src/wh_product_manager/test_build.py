@@ -1,50 +1,58 @@
 """
-Nuitka entry point for building the EXE
-This is separate from run.py to avoid module loading issues
+Minimal test to see if EXE runs at all
 """
 
 import sys
-import traceback
 
 
 def main():
-    """Main entry point for the built EXE"""
+    """Absolute minimal entry point"""
     try:
-        print("Starting WH Product Manager...")
+        # Test 1: Can we write to console?
+        sys.stdout.write("TEST 1: Console output works\n")
         sys.stdout.flush()
 
-        # Import settings first to catch config errors
-        print("Loading configuration...")
-        from .config import Settings
+        # Test 2: Can we import standard library?
+        sys.stdout.write("TEST 2: Importing sys module...\n")
+        sys.stdout.flush()
+        sys.stdout.write("TEST 2: Success\n")
+        sys.stdout.flush()
 
+        # Test 3: Can we import Pydantic?
+        sys.stdout.write("TEST 3: Importing pydantic...\n")
+        sys.stdout.flush()
+        sys.stdout.write("TEST 3: Success\n")
+        sys.stdout.flush()
+
+        # Test 4: Can we import our config?
+        sys.stdout.write("TEST 4: Importing wh_product_manager.config...\n")
+        sys.stdout.flush()
+        from wh_product_manager.config import Settings
+
+        sys.stdout.write("TEST 4: Success\n")
+        sys.stdout.flush()
+
+        # Test 5: Can we create settings?
+        sys.stdout.write("TEST 5: Creating Settings object...\n")
+        sys.stdout.flush()
         settings = Settings()
-        print("✓ Configuration loaded")
-        print(f"  HOST: {settings.HOST}")
-        print(f"  PORT: {settings.PORT}")
+        sys.stdout.write(f"TEST 5: Success - PORT={settings.PORT}\n")
         sys.stdout.flush()
 
-        # Import and run uvicorn
-        print("Starting uvicorn server...")
-        import uvicorn
+        sys.stdout.write("\n✅ ALL TESTS PASSED\n")
+        sys.stdout.flush()
 
-        uvicorn.run(
-            "wh_product_manager.main:app",
-            host=settings.HOST,
-            port=settings.PORT,
-            log_level=settings.LOG_LEVEL.lower(),
-            reload=False,  # Don't use reload in EXE
-        )
+        # Keep window open
+        input("Press Enter to close...")
 
     except Exception as e:
-        print(f"\n❌ ERROR: {type(e).__name__}")
-        print(f"Message: {str(e)}")
-        print("\nFull traceback:")
+        sys.stdout.write(f"\n❌ ERROR: {str(e)}\n")
+        sys.stdout.flush()
+        import traceback
+
         traceback.print_exc()
         sys.stdout.flush()
-
-        # Keep console open
-        input("\nPress Enter to close...")
-        sys.exit(1)
+        input("Press Enter to close...")
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@ def main():
 
         # Import settings first to catch config errors
         print("Loading configuration...")
-        from .config import Settings
+        from wh_product_manager.config import Settings  # ✅ FIXED
 
         settings = Settings()
         print("✓ Configuration loaded")
@@ -28,7 +28,7 @@ def main():
         import uvicorn
 
         uvicorn.run(
-            "wh_product_manager.main:app",
+            "wh_product_manager.main:app",  # ✅ FIXED
             host=settings.HOST,
             port=settings.PORT,
             log_level=settings.LOG_LEVEL.lower(),
