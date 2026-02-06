@@ -15,69 +15,74 @@ def build():
     # Project settings
     PROJECT_NAME = "WH Product Manager"
     COMPANY_NAME = "WH-IT"
-    VERSION = "1.0.0"
+    VERSION = "1.0.0.0"
+    EXE_NAME = "WH-Product-Manager"
 
     # Paths
     root_dir = Path(__file__).parent
-    main_file = root_dir / "src" / "wh_product_manager" / "main.py"
+    main_file = root_dir / "src" / "wh_product_manager" / "run.py"
     icon_file = root_dir / "assets" / "icon.ico"
     output_dir = root_dir / "dist"
 
-    # Verify files exist
+    print("=" * 80)
+    print(f"Building {PROJECT_NAME} v{VERSION}")
+    print("=" * 80)
+
+    # Verify main file exists
     if not main_file.exists():
-        print(f"ERROR: main.py not found at {main_file}")
+        print(f"❌ ERROR: run.py not found at {main_file}")
         return False
 
-    if not icon_file.exists():
-        print(f"WARNING: icon.ico not found at {icon_file}")
-        icon_arg = ""
+    # Check for icon
+    if icon_file.exists():
+        icon_arg = f"--windows-icon-from-ico={icon_file}"
+        print(f"✓ Icon found: {icon_file}")
     else:
-        icon_arg = f'--windows-icon-from-ico="{icon_file}"'
+        icon_arg = None
+        print(f"⚠ Warning: Icon not found at {icon_file} (optional)")
 
-    # Build command
+    # Build command - CHANGED: use attach instead of disable for debugging
     cmd = [
         sys.executable,
         "-m",
         "nuitka",
-        str(main_file),
         "--onefile",
-        "--noinclude-default-mode=nofollow",
-        "--include-module=wh_product_manager",
-        f'--windows-company-name="{COMPANY_NAME}"',
-        f'--windows-product-name="{PROJECT_NAME}"',
-        f'--windows-file-version="{VERSION}"',
+        "--windows-console-mode=attach",  # CHANGED: Shows console for debugging
+        f"--output-filename={EXE_NAME}",
+        f"--windows-company-name={COMPANY_NAME}",
+        f"--windows-product-name={PROJECT_NAME}",
+        f"--windows-file-version={VERSION}",
+        f"--windows-product-version={VERSION}",
         f"--output-dir={output_dir}",
-        "--assume-yes-for-downloads",  # Auto-download Nuitka's dependencies
-        "--follow-imports",  # Follow all imports
+        "--assume-yes-for-downloads",
+        "--follow-imports",
+        "--enable-plugin=anti-bloat",
+        "--follow-import-to=wh_product_manager",
+        str(main_file),
     ]
 
-    # Add icon if it exists
+    # Add icon if available
     if icon_arg:
-        cmd.append(icon_arg)
+        cmd.insert(-1, icon_arg)
 
-    # Add these for faster/cleaner builds
-    cmd.extend(
-        [
-            "--follow-import-to=wh_product_manager",  # Only follow our package
-            "--nofollow-import-to=tests",  # Don't include tests
-        ]
-    )
-
-    print(f"Building {PROJECT_NAME} v{VERSION}...")
-    print(f"Command: {' '.join(cmd)}")
+    print(f"\n📦 Output directory: {output_dir}\n")
+    print("Running Nuitka compilation...")
     print("-" * 80)
 
     # Run build
     result = subprocess.run(cmd, shell=False)
 
+    print("-" * 80)
+
     if result.returncode == 0:
-        print("-" * 80)
-        print("✅ Build successful!")
-        print(f"📦 Output: {output_dir}")
+        exe_path = output_dir / f"{EXE_NAME}.exe"
+        print("\n✅ Build successful!")
+        print(f"📁 Output: {exe_path}")
+        print(f"\nYou can now run: {exe_path}")
         return True
     else:
-        print("-" * 80)
-        print(f"❌ Build failed with return code {result.returncode}")
+        print(f"\n❌ Build failed with return code {result.returncode}")
+        print("Try running with: uv run python nuitka-build.py")
         return False
 
 
