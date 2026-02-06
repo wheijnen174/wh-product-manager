@@ -1,6 +1,3 @@
-def main():
-    print("Hello from wh-product-manager!")
+# Product Manager
 
-
-if __name__ == "__main__":
-    main()
+This is the main module for the product manager.
