@@ -41,13 +41,13 @@ def build():
         icon_arg = None
         print(f"⚠ Warning: Icon not found at {icon_file} (optional)")
 
-    # Build command - CHANGED: use attach instead of disable for debugging
+    # Build command
     cmd = [
         sys.executable,
         "-m",
         "nuitka",
         "--onefile",
-        "--windows-console-mode=attach",  # CHANGED: Shows console for debugging
+        "--windows-console-mode=attach",  # Shows console for debugging
         f"--output-filename={EXE_NAME}",
         f"--windows-company-name={COMPANY_NAME}",
         f"--windows-product-name={PROJECT_NAME}",
@@ -55,9 +55,14 @@ def build():
         f"--windows-product-version={VERSION}",
         f"--output-dir={output_dir}",
         "--assume-yes-for-downloads",
-        "--follow-imports",
-        "--enable-plugin=anti-bloat",
-        "--follow-import-to=wh_product_manager",
+        # IMPORTANT: Include the entire package
+        "--include-package=wh_product_manager",
+        # Include subpackages
+        "--include-package=wh_product_manager.core",
+        "--include-package=wh_product_manager.api",
+        "--include-package=wh_product_manager.shopify",
+        "--include-package=wh_product_manager.suppliers",
+        "--include-package=wh_product_manager.utils",
         str(main_file),
     ]
 
