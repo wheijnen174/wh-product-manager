@@ -6,7 +6,6 @@ Provides consistent logging across all modules
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 
 class Logger:
@@ -29,7 +28,7 @@ class Logger:
         self,
         name: str = "wh_product_manager",
         level: str = "INFO",
-        log_dir: Optional[Path] = None,
+        log_dir: Path | None = None,
     ):
         """
         Initialize the logger

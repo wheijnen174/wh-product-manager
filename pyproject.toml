@@ -23,6 +23,9 @@ dependencies = [
 Homepage = "https://github.com/wheijnen174/wh-product-manager"
 Repository = "https://github.com/wheijnen174/wh-product-manager.git"
 
+[project.scripts]
+wh-dev = "src.wh_product_manager.run:main"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
