@@ -1,13 +1,32 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-main.build/
-main.dist/
-main.exe
-wheels/
-*.egg-info
+# Environment variables
+.env
+.env.shopify-token
+.env.local
+.env.*.local
 
-# Virtual environments
-.venv
+# Nuitka build output
+dist/
+build/
+*.dist/
+*.build/
+*.spec
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
