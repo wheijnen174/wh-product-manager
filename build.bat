@@ -6,9 +6,7 @@ uv run python nuitka-build.py
 if %ERRORLEVEL% EQU 0 (
     echo.
     echo Build complete! Check the dist folder for the EXE.
-    pause
 ) else (
     echo.
     echo Build failed!
-    pause
 )
