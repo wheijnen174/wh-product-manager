@@ -57,3 +57,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+else:
+    print("This script is meant to be run as the main entry point for the EXE.")
+    print("If you're seeing this message, something went wrong with the build process.")
+    sys.exit(1)
