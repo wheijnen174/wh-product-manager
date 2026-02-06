@@ -1,14 +1,17 @@
-# Environment variables
+# Python packaging
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Environment and secrets
 .env
-.env.shopify-token
 .env.local
-.env.*.local
+.env.*
 
 # Nuitka build output
 dist/
 build/
-*.dist/
-*.build/
 *.spec
 
 # Python
