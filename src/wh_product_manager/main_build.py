@@ -15,7 +15,7 @@ def main():
 
         # Import settings first to catch config errors
         print("Loading configuration...")
-        from wh_product_manager.config import Settings  # ✅ FIXED
+        from wh_product_manager.config import Settings
 
         settings = Settings()
         print("✓ Configuration loaded")
@@ -27,8 +27,11 @@ def main():
         print("Starting uvicorn server...")
         import uvicorn
 
+        print("Port: ", settings.PORT)
+        print("Port variable type: ", type(settings.PORT))
+
         uvicorn.run(
-            "wh_product_manager.main:app",  # ✅ FIXED
+            "wh_product_manager.main:app",
             host=settings.HOST,
             port=settings.PORT,
             log_level=settings.LOG_LEVEL.lower(),
@@ -51,5 +54,4 @@ if __name__ == "__main__":
     main()
 else:
     print("This script is meant to be run as the main entry point for the EXE.")
-    print("If you're seeing this message, something went wrong with the build process.")
     sys.exit(1)
