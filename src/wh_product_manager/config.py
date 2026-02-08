@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic_settings import BaseSettings
 
-from .utils.data_loader import get_log_file
+from wh_product_manager.utils.data_loader import get_log_file
 
 
 class Settings(BaseSettings):
@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     # Shopify
     SHOPIFY_SHOP_URL: str = ""
     SHOPIFY_API_VERSION: str = "2026-01"
+    SHOPIFY_ACCESS_TOKEN: str = ""
     SHOPIFY_API_BATCH_DELAY: float = 0.0
 
     # Email/Debugging
@@ -61,7 +62,7 @@ class Settings(BaseSettings):
         # Load Shopify token from file if it exists
         token_file = Path(".env.shopify-token")
         if token_file.exists():
-            self.SHOPIFY_ACCESS_TOKEN = token_file.read_text(encoding="utf-8").strip()
+            self.SHOPIFY_ACCESS_TOKEN = token_file.read_text(encoding="utf-8").strip()  # type: ignore
         elif not self.SHOPIFY_ACCESS_TOKEN:
             # Fallback to env var if file doesn't exist
             raise ValueError(

@@ -10,10 +10,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from wh_product_manager.config import Settings
-from wh_product_manager.container import Container
+from wh_product_manager.services import Services
 
 # Global container for dependency injection
-container: Container | None = None
+services: Services | None = None
 
 
 @asynccontextmanager
@@ -22,18 +22,18 @@ async def lifespan(app: FastAPI):
     Lifespan context manager for FastAPI
     Handles startup and shutdown events
     """
-    global container
+    global services
 
     # Startup
     settings = Settings()
-    container = Container(settings)
-    container.logger.info("Application startup complete")
+    services = Services(settings)
+    services.logger.info("Application startup complete")
 
     yield
 
     # Shutdown
-    if container:
-        container.logger.info("Application shutdown")
+    if services:
+        services.logger.info("Application shutdown")
 
 
 def create_app() -> FastAPI:
@@ -77,8 +77,8 @@ def create_app() -> FastAPI:
         request: Request, exc: Exception
     ) -> JSONResponse:
         """Handle all unhandled exceptions globally"""
-        if container:
-            container.logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+        if services:
+            services.logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
 
         return JSONResponse(
             status_code=500,
