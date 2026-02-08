@@ -6,6 +6,7 @@ Provides consistent logging across all modules
 import logging
 import sys
 from pathlib import Path
+from typing import Any
 
 from wh_product_manager.utils.data_loader import get_log_file
 
@@ -101,19 +102,21 @@ class Logger:
         file_handler.setFormatter(formatter)
         self.logger.addHandler(file_handler)
 
-    def debug(self, message: str, *args, **kwargs) -> None:
+    def debug(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log a debug message"""
         self.logger.debug(message, *args, **kwargs)
 
-    def info(self, message: str, *args, **kwargs) -> None:
+    def info(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log an info message"""
         self.logger.info(message, *args, **kwargs)
 
-    def warning(self, message: str, *args, **kwargs) -> None:
+    def warning(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log a warning message"""
         self.logger.warning(message, *args, **kwargs)
 
-    def error(self, message: str, *args, exc_info: bool = False, **kwargs) -> None:
+    def error(
+        self, message: str, *args: Any, exc_info: bool = False, **kwargs: Any
+    ) -> None:
         """
         Log an error message
 
@@ -123,11 +126,11 @@ class Logger:
         """
         self.logger.error(message, *args, exc_info=exc_info, **kwargs)
 
-    def critical(self, message: str, *args, **kwargs) -> None:
+    def critical(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log a critical message"""
         self.logger.critical(message, *args, **kwargs)
 
-    def exception(self, message: str, *args, **kwargs) -> None:
+    def exception(self, message: str, *args: Any, **kwargs: Any) -> None:
         """
         Log an exception with full traceback
 

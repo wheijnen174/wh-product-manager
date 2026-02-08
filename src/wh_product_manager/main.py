@@ -5,12 +5,12 @@ FastAPI application for managing products via Shopify GraphQL API
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .config import Settings
-from .container import Container
+from wh_product_manager.config import Settings
+from wh_product_manager.container import Container
 
 # Global container for dependency injection
 container: Container | None = None
@@ -66,20 +66,17 @@ def create_app() -> FastAPI:
         )
 
     # Include routes
-    # from .api.routes import health, products
+    from wh_product_manager.api.routes import health, products
 
-    # app.include_router(health.router)
-    # app.include_router(products.router, prefix="/api/v1")
-
-    @app.get("/")
-    def endpoint_root():
-        return {
-            "RESULT": "WH Product Manager API is running",
-        }
+    app.include_router(health.router, prefix="/api/v1/health")
+    app.include_router(products.router, prefix="/api/v1/products")
 
     # Global exception handler
     @app.exception_handler(Exception)
-    async def global_exception_handler(request, exc):
+    async def global_exception_handler(  # pyright: ignore[reportUnusedFunction]
+        request: Request, exc: Exception
+    ) -> JSONResponse:
+        """Handle all unhandled exceptions globally"""
         if container:
             container.logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
 
