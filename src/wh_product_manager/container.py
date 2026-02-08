@@ -21,15 +21,6 @@ class Container:
             settings: Application settings
         """
         self.settings = settings
-        self.logger = Logger(settings.LOG_LEVEL)
+        self.logger = Logger(level=settings.LOG_LEVEL)
 
-        # Core services
-        # self.shopify_client = ShopifyGraphQLClient(
-        #     shop_url=settings.SHOPIFY_URL,
-        #     access_token=settings.SHOPIFY_ACCESS_TOKEN,
-        #     logger=self.logger,
-        # )
-
-        # Helpers
-        # self.helpers = ShopifyHelpers(self.shopify_client, self.logger)
         self.logger.info("Container initialized with all services")

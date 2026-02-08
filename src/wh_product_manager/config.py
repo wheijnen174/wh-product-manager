@@ -7,6 +7,8 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings
 
+from .utils.data_loader import get_log_file
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
@@ -18,6 +20,7 @@ class Settings(BaseSettings):
 
     # Logging
     LOG_LEVEL: str = "INFO"
+    LOG_FILE: str = str(get_log_file())
 
     # CORS (only needed if you have a web frontend)
     ENABLE_CORS: bool = False

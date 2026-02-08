@@ -7,6 +7,8 @@ import logging
 import sys
 from pathlib import Path
 
+from wh_product_manager.utils.data_loader import get_log_file
+
 
 class Logger:
     """
@@ -28,7 +30,6 @@ class Logger:
         self,
         name: str = "wh_product_manager",
         level: str = "INFO",
-        log_dir: Path | None = None,
     ):
         """
         Initialize the logger
@@ -39,7 +40,7 @@ class Logger:
             log_dir: Directory for log files (default: None, console only)
         """
         self.name = name
-        self.log_dir = log_dir
+        self.log_dir = get_log_file().parent
 
         # Create base logger
         self.logger = logging.getLogger(name)
@@ -55,8 +56,8 @@ class Logger:
         self._add_console_handler(log_level)
 
         # File handler if log_dir specified
-        if log_dir:
-            self._add_file_handler(log_level, log_dir)
+        if self.log_dir:
+            self._add_file_handler(log_level, self.log_dir)
 
     def _add_console_handler(self, level: int) -> None:
         """

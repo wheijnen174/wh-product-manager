@@ -3,6 +3,7 @@
 dist/
 build/
 *.egg
+*.log
 
 # Environment and secrets
 .env

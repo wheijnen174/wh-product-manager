@@ -41,25 +41,6 @@ def build():
         icon_arg = None
         print("⚠ Icon not found (optional)")
 
-    # cmd = [
-    #     sys.executable,
-    #     "-m",
-    #     "nuitka",
-    #     "--onefile",
-    #     "--windows-console-mode=attach",
-    #     f'--output-filename="{EXE_NAME}"',
-    #     f'--windows-company-name="{COMPANY_NAME}"',
-    #     f'--windows-product-name="{PROJECT_NAME}"',
-    #     f'--windows-file-version="{VERSION}"',
-    #     f'--windows-product-version="{VERSION}"',
-    #     f'--output-dir="{output_dir}"',
-    #     "--assume-yes-for-downloads",
-    #     "--include-package=wh_product_manager",
-    #     "--include-package=wh_product_manager.core",
-    #     "--enable-plugin=anti-bloat",
-    #     str(main_file),
-    # ]
-
     cmd = [
         sys.executable,
         "-m",
@@ -87,26 +68,10 @@ def build():
     # Create clean environment with only necessary paths
     env = os.environ.copy()
 
-    # # Remove Anaconda from PATH to prevent conflicts
-    # path_dirs = env.get("PATH", "").split(os.pathsep)
-    # clean_path = []
-
-    # for path_dir in path_dirs:
-    #     # Skip Anaconda directories
-    #     if "anaconda" not in path_dir.lower() and "conda" not in path_dir.lower():
-    #         clean_path.append(path_dir)
-
-    # # Add current Python's directory at the beginning
-    # python_dir = Path(sys.executable).parent
-    # clean_path.insert(0, str(python_dir))
-
-    # env["PATH"] = os.pathsep.join(clean_path)
-
     # Set Python executable for Nuitka
     env["NUITKA_PYTHON_EXE"] = sys.executable
 
     print(f"Python executable: {sys.executable}")
-    # print(f"Anaconda removed from PATH: {any('anaconda' in p.lower() for p in path_dirs)}")
 
     result = subprocess.run(cmd, shell=False, env=env)
 

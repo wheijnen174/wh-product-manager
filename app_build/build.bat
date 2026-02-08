@@ -9,4 +9,5 @@ if %ERRORLEVEL% EQU 0 (
 ) else (
     echo.
     echo Build failed!
+    pause
 )

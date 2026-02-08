@@ -27,9 +27,6 @@ def main():
         print("Starting uvicorn server...")
         import uvicorn
 
-        print("Port: ", settings.PORT)
-        print("Port variable type: ", type(settings.PORT))
-
         uvicorn.run(
             "wh_product_manager.main:app",
             host=settings.HOST,
