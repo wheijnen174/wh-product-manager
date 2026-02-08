@@ -4,6 +4,7 @@ Loads from environment variables and external files
 """
 
 from pathlib import Path
+from typing import Any
 
 from pydantic_settings import BaseSettings
 
@@ -29,7 +30,6 @@ class Settings(BaseSettings):
     # Shopify
     SHOPIFY_SHOP_URL: str = ""
     SHOPIFY_API_VERSION: str = "2026-01"
-    SHOPIFY_ACCESS_TOKEN: str = ""
     SHOPIFY_API_BATCH_DELAY: float = 0.0
 
     # Email/Debugging
@@ -52,7 +52,7 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
         case_sensitive = True
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any):
         """
         Initialize settings and load Shopify token from file
         """
