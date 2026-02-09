@@ -66,10 +66,11 @@ def create_app(app_settings: Settings) -> FastAPI:
         )
 
     # Include routes
-    from wh_product_manager.api.routes import health, products
+    from wh_product_manager.api.routes import health, products, suppliers
 
     app.include_router(health.router, prefix="/api/v1/health")
     app.include_router(products.router, prefix="/api/v1/products")
+    app.include_router(suppliers.router, prefix="/api/v1/suppliers")
 
     # Global exception handler
     @app.exception_handler(Exception)

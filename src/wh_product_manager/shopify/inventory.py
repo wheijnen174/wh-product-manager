@@ -226,19 +226,21 @@ class InventoryService:
 
                 # Initialize parent SKU entry if not exists
                 if parent_sku not in current_inventory:
-                    current_inventory[parent_sku] = {
-                        "parent_id": product["id"],
-                        "parent_status": product["status"],
-                        "parent_last_update": next(
-                            (
-                                m["node"]["value"]
-                                for m in metafields
-                                if m["node"]["key"] == "whpm.update_time"
-                            ),
-                            None,
+                    current_inventory[parent_sku] = {}
+
+                    if return_ids:
+                        current_inventory[parent_sku]["parent_id"] = product["id"]
+
+                    current_inventory[parent_sku]["parent_status"] = product["status"]
+                    current_inventory[parent_sku]["parent_last_update"] = next(
+                        (
+                            m["node"]["value"]
+                            for m in metafields
+                            if m["node"]["key"] == "whpm.update_time"
                         ),
-                        "variants": [],
-                    }
+                        None,
+                    )
+                    current_inventory[parent_sku]["variants"] = []
 
                 # Extract variant data
                 variant_data: dict[str, Any] = {}
