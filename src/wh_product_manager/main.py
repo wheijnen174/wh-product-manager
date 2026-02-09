@@ -16,34 +16,34 @@ from wh_product_manager.services import Services
 services: Services | None = None
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """
-    Lifespan context manager for FastAPI
-    Handles startup and shutdown events
-    """
-    global services
-
-    # Startup
-    settings = Settings()
-    services = Services(settings)
-    services.logger.info("Application startup complete")
-
-    yield
-
-    # Shutdown
-    if services:
-        services.logger.info("Application shutdown")
-
-
-def create_app() -> FastAPI:
+def create_app(app_settings: Settings) -> FastAPI:
     """
     Factory function to create and configure FastAPI application
+
+    Args:
+        app_settings: Application settings
 
     Returns:
         FastAPI: Configured FastAPI application
     """
-    settings = Settings()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        """
+        Lifespan context manager for FastAPI
+        Handles startup and shutdown events
+        """
+        global services
+
+        # Startup - create Services with passed settings
+        services = Services(app_settings)
+        services.logger.info("Application startup complete")
+
+        yield
+
+        # Shutdown
+        if services:
+            services.logger.info("Application shutdown")
 
     app = FastAPI(
         title="WH Product Manager",
@@ -56,10 +56,10 @@ def create_app() -> FastAPI:
     )
 
     # Only add CORS middleware if enabled
-    if settings.ENABLE_CORS:
+    if app_settings.ENABLE_CORS:
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=settings.CORS_ORIGINS,
+            allow_origins=app_settings.CORS_ORIGINS,
             allow_credentials=True,
             allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             allow_headers=["*"],
@@ -89,15 +89,17 @@ def create_app() -> FastAPI:
 
 
 # Create the application instance
-app = create_app()
+_settings = Settings()
+app = create_app(_settings)
 
 
 if __name__ == "__main__":
     import uvicorn
 
     settings = Settings()
+
     uvicorn.run(
-        app,
+        "wh_product_manager.main:app",
         host=settings.HOST,
         port=settings.PORT,
         log_level=settings.LOG_LEVEL.lower(),

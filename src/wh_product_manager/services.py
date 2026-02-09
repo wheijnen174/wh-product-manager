@@ -7,6 +7,7 @@ from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
 from wh_product_manager.shopify.inventory import InventoryService
+from wh_product_manager.shopify.products import ProductService
 
 
 class Services:
@@ -29,6 +30,10 @@ class Services:
 
         self.shopify_inventory = InventoryService(
             self.shopify_client, self.settings, self.logger
+        )
+
+        self.product_service = ProductService(
+            self.shopify_client, settings, self.logger
         )
 
         self.logger.info("Services Container initialized with all services")
