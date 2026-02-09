@@ -9,7 +9,7 @@ import httpx
 import xmltodict
 
 from wh_product_manager.suppliers.base import BaseSupplier
-from wh_product_manager.suppliers.schemas import UnifiedProduct
+from wh_product_manager.suppliers.schemas import UnifiedProduct, UnifiedVariant
 
 
 class Supplier_OneDC(BaseSupplier):
@@ -71,55 +71,83 @@ class Supplier_OneDC(BaseSupplier):
             dict[str, UnifiedProduct]: Transformed products where key is parent SKU
         """
 
-        return {"product1": None}  # TODO: Implement transformation logic
+        # return {"product1": None}  # TODO: Implement transformation logic
 
-    #     try:
-    #         self.logger.info("Supplier_OneDC - Transforming data...")
-    #         unified_products = []
+        try:
+            self.logger.info("Supplier_OneDC - Transforming data...")
+            unified_products: dict[str, UnifiedProduct] = {}
 
-    #         for product in raw_data.get("products", []):
-    #             # Transform variants
-    #             variants = []
-    #             for item in product.get("items", []):
-    #                 variant = UnifiedVariant(
-    #                     sku=item["item_sku"],
-    #                     title=item["item_name"],
-    #                     price=float(item["selling_price"]),
-    #                     cost=float(item["cost_price"]),
-    #                     quantity=int(item["stock"]),
-    #                     barcode=item.get("barcode"),
-    #                 )
-    #                 variants.append(variant)
+            for product in raw_data.get("products", {}).get("product", []):
+                # Set values for common fields for all variants
+                price = float(product.get("prices").get("recommended_retail_price"))
+                cost = float(product.get("prices").get("b2b_price"))
+                weight = product.get("weight")
+                country_of_origin = product.get(
+                    "country_of_origin"
+                )  # TODO: Convert Dutch naming to ISO code
+                hscode = int(product.get("hscode")) if product.get("hscode") else None
 
-    #             # Create unified product
-    #             last_updated = None
-    #             if product.get("last_update"):
-    #                 try:
-    #                     last_updated = datetime.fromisoformat(
-    #                         product["last_update"].replace("Z", "+00:00")
-    #                     )
-    #                 except ValueError:
-    #                     pass
+                # Transform variants
+                variants_raw: list[dict[str, Any]] = product.get("variants", {}).get(
+                    "variant", []
+                )
+                if isinstance(variants_raw, dict):
+                    variants_raw = [variants_raw]  # Convert single variant to list
 
-    #             unified_product = UnifiedProduct(
-    #                 parent_sku=product["id"],
-    #                 title=product["name"],
-    #                 description=product.get("description"),
-    #                 category=product.get("category"),
-    #                 variants=variants,
-    #                 metadata={
-    #                     "provider": "Supplier_OneDC",
-    #                     "original_id": product["id"],
-    #                 },
-    #                 last_updated=last_updated,
-    #             )
-    #             unified_products.append(unified_product)
+                variants: list[UnifiedVariant] = []
+                for item in variants_raw:
+                    variant = UnifiedVariant(
+                        sku=str(item.get("article_number")),
+                        stock=int(item.get("stock") or 0),
+                        price=price,
+                        cost=cost,
+                        barcode=item.get("barcode"),
+                        size_title=item.get("size_title"),
+                        weight=weight,
+                        country_of_origin=country_of_origin,
+                        hscode=hscode,
+                    )
+                    variants.append(variant)
 
-    #         self.logger.info(
-    #             f"Supplier_OneDC - Transformed {len(unified_products)} products"
-    #         )
-    #         return unified_products
+                # Handle images (convert single image to list if necessary)
+                images: list[str] | str | None = None
+                if product.get("images", {}):
+                    images = product.get("images", {}).get("image")
+                    if isinstance(images, str):
+                        images = [images]  # Convert single image to list
 
-    #     except Exception as e:
-    #         self.logger.error(f"Supplier_OneDC - Transformation failed: {str(e)}")
-    #         raise
+                # Handle categories (convert single category to list if necessary)
+                categories: str | None = None
+                if product.get("categories", {}).get("category"):
+                    categories_raw = product.get("categories", {}).get("category", [])
+                    if isinstance(categories_raw, dict):
+                        categories_raw = [
+                            categories_raw
+                        ]  # Convert single category to list
+
+                    categories = " > ".join([x["title"] for x in categories_raw])
+
+                # Create unified product
+                unified_product = UnifiedProduct(
+                    supplier_product_id=product.get("pid"),
+                    title=product.get("title"),
+                    images=images,
+                    category=categories,
+                    variants=variants,
+                    description=product.get("description"),
+                    properties=None,
+                )
+
+                if price > cost and isinstance(images, list):
+                    unified_products[product.get("head_article_number")] = (
+                        unified_product
+                    )
+
+            self.logger.info(
+                f"Supplier_OneDC - Transformed {len(unified_products)} products"
+            )
+            return unified_products
+
+        except Exception as e:
+            self.logger.error(f"Supplier_OneDC - Transformation failed: {str(e)}")
+            raise

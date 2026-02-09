@@ -3,6 +3,8 @@ Supplier Data Service
 Orchestrates all supplier operations
 """
 
+from typing import Any
+
 from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
@@ -61,7 +63,7 @@ class SupplierService:
 
         return supplier
 
-    async def fetch_all_data(self) -> dict[str, SupplierDataResult]:
+    async def fetch_all_data(self) -> dict[str, Any]:
         """
         Fetch raw product data from all suppliers
 
@@ -69,7 +71,7 @@ class SupplierService:
             Dictionary mapping supplier names to their raw product data
         """
         self.logger.info("Fetching raw product data from all suppliers")
-        all_data: dict[str, SupplierDataResult] = {}
+        all_data: dict[str, Any] = {}
 
         for name, supplier in self.suppliers.items():
             self.logger.info(f"Fetching data from supplier: {name}")

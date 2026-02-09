@@ -12,11 +12,11 @@ services = Services(settings=Settings())
 @router.get("/products")
 async def get_all_products() -> JSONResponse:
     """Fetch raw product data from all suppliers"""
-    raw_data = await services.supplier_service.fetch_all_data()
+    data = await services.supplier_service.fetch_all_data()
 
     return JSONResponse(
         status_code=200,
-        content=raw_data,
+        content={name: data.to_dict() for name, data in data.items()},
     )
 
 
