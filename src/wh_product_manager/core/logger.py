@@ -115,7 +115,7 @@ class Logger:
         self.logger.warning(message, *args, **kwargs)
 
     def error(
-        self, message: str, *args: Any, exc_info: bool = False, **kwargs: Any
+        self, message: str, *args: Any, exc_info: bool = True, **kwargs: Any
     ) -> None:
         """
         Log an error message

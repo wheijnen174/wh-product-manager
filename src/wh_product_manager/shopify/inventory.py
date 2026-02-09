@@ -9,7 +9,7 @@ from typing import Any
 from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
-from wh_product_manager.shopify.helpers import get_stock_location_id
+from wh_product_manager.shopify.helpers.stock_location import StockLocation
 
 
 class InventoryService:
@@ -29,10 +29,11 @@ class InventoryService:
             settings: Application settings
             logger: Logger instance
         """
+
         self.shopify_client = shopify_client
         self.settings = settings
         self.logger = logger
-        self.batch_size = 1
+        self.batch_size = 250  # Number of inventory items to fetch per batch, 250 is Shopify's max for query
 
     async def get_current_inventory(self, return_ids: bool = False) -> dict[str, Any]:
         """
@@ -45,33 +46,38 @@ class InventoryService:
             dict: Inventory organized by parent SKU
                 {
                     "SKU123": {
-                        "parent_id": "...",
+                        "parent_id": "gid://shopify/Product/123456789",     # Optional, only included if return_ids=True
                         "parent_status": "active",
                         "parent_last_update": "2024-01-15",
                         "variants": [
                             {
-                                "sku": "SKU123-1",
-                                "available_quantity": 50,
-                                "price": 29.99,
-                                ...
+                                "inventory_id": "gid://shopify/InventoryItem/123456789",    # Optional, only included if return_ids=True
+                                "location_id": "gid://shopify/Location/123456789",          # Optional, only included if return_ids=True
+                                "variant_id": "gid://shopify/ProductVariant/123456789",     # Optional, only included if return_ids=True
+                                "sku": "SKU123-RED-M",
+                                "last_update": "1900-01-01T00:00:00Z",
+                                "cost_per_item": 10.0,
+                                "price": 19.99,
+                                "available_quantity": 0
                             }
                         ]
                     }
                 }
         """
+
         self.logger.info("Starting inventory retrieval from Shopify...")
 
-        location_id = await get_stock_location_id(
-            location_name="One-DC",
-            shopify_client=self.shopify_client,
-            logger=self.logger,
-        )
-
-        query = self._create_graphql_query_inventory(location_id)
-
-        cursor = None
-
         try:
+            location_id = await StockLocation.get_id_by_name(
+                shopify_client=self.shopify_client,
+                logger=self.logger,
+                location_name="One-DC",
+            )
+
+            query = self._create_graphql_query_inventory(location_id)
+
+            cursor = None
+
             current_inventory: dict[str, Any] = {}
 
             while True:
@@ -201,6 +207,9 @@ class InventoryService:
                 product = variant["product"]
                 metafields = product.get("metafields", {}).get("edges", [])
 
+                if node.get("inventoryLevel") is None:
+                    continue
+
                 # Extract parent SKU from metafields
                 parent_sku = next(
                     (
@@ -236,14 +245,13 @@ class InventoryService:
 
                 # Add IDs if requested
                 if return_ids:
-                    variant_data["inventory_id"] = node["id"]
-                    variant_data["location_id"] = node["inventoryLevel"]["location"][
-                        "id"
-                    ]
-                    variant_data["variant_id"] = variant["id"]
-
+                    variant_data["inventory_id"] = node.get("id", "")
+                    variant_data["location_id"] = (
+                        node.get("inventoryLevel", {}).get("location", {}).get("id", "")
+                    )
+                    variant_data["variant_id"] = variant.get("id", "")
                 # Add basic variant info
-                variant_data["sku"] = node["sku"]
+                variant_data["sku"] = node.get("sku")
                 variant_data["last_update"] = variant.get("metafield", {}).get("value")
 
                 # Add cost if valid
