@@ -94,9 +94,9 @@ class UnifiedProduct:
 
     supplier_product_id: int
     title: str
-    images: list[str]
-    category: str
     variants: list[UnifiedVariant]
+    images: list[str] | None = None
+    category: str | None = None
     description: str | None = None
     properties: dict[str, UnifiedProperty] | None = None
 

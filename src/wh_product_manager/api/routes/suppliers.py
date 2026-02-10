@@ -31,6 +31,25 @@ async def get_supplier_products(supplier_name: str) -> JSONResponse:
             content={"error": str(e)},
         )
 
+    unified_data = await supplier.get_unified_data()
+
+    return JSONResponse(
+        status_code=200,
+        content=unified_data,
+    )
+
+
+@router.get("/{supplier_name}/products/raw")
+async def get_supplier_products_raw(supplier_name: str) -> JSONResponse:
+    """Fetch raw product data from the specified supplier"""
+    try:
+        supplier = await services.supplier_service.get_supplier(supplier_name)
+    except ValueError as e:
+        return JSONResponse(
+            status_code=404,
+            content={"error": str(e)},
+        )
+
     raw_data = await supplier.fetch_raw_data()
 
     return JSONResponse(

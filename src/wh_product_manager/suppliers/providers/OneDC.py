@@ -42,16 +42,25 @@ class Supplier_OneDC(BaseSupplier):
             httpx.HTTPError: If the API request fails
         """
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    self.settings.ONEDC_XML_URL,
-                    timeout=30.0,
-                )
-                response.raise_for_status()
+            # Offline data for testing purposes
+            with open("data/onedc_product_data_20260210.xml", "r") as file:
+                xml_content = file.read()
 
-                data = xmltodict.parse(response.text)
+                data = xmltodict.parse(xml_content)
 
                 return data
+
+            # # Actual internet-fetching disabled for testing purposes, return offline data instead
+            # async with httpx.AsyncClient() as client:
+            #     response = await client.get(
+            #         self.settings.ONEDC_XML_URL,
+            #         timeout=30.0,
+            #     )
+            #     response.raise_for_status()
+
+            #     data = xmltodict.parse(response.text)
+
+            #     return data
 
         except httpx.HTTPError as e:
             self.logger.error(f"HTTP request failed: {str(e)}")
@@ -114,16 +123,14 @@ class Supplier_OneDC(BaseSupplier):
                 if product.get("images", {}):
                     images = product.get("images", {}).get("image")
                     if isinstance(images, str):
-                        images = [images]  # Convert single image to list
+                        images = [images]
 
                 # Handle categories (convert single category to list if necessary)
                 categories: str | None = None
                 if product.get("categories", {}).get("category"):
                     categories_raw = product.get("categories", {}).get("category", [])
                     if isinstance(categories_raw, dict):
-                        categories_raw = [
-                            categories_raw
-                        ]  # Convert single category to list
+                        categories_raw: list[dict[str, Any]] = [categories_raw]
 
                     categories = " > ".join([x["title"] for x in categories_raw])
 
@@ -138,10 +145,7 @@ class Supplier_OneDC(BaseSupplier):
                     properties=None,
                 )
 
-                if price > cost and isinstance(images, list):
-                    unified_products[product.get("head_article_number")] = (
-                        unified_product
-                    )
+                unified_products[product.get("head_article_number")] = unified_product
 
             self.logger.info(
                 f"Supplier_OneDC - Transformed {len(unified_products)} products"
