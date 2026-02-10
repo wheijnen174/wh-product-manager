@@ -8,8 +8,10 @@ from typing import Any
 from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
-from wh_product_manager.shopify.products.parent import ParentProductManager
-from wh_product_manager.shopify.products.variant import VariantProductManager
+from wh_product_manager.shopify.inventory import InventoryService
+from wh_product_manager.shopify.products.parent import ProductParent
+from wh_product_manager.shopify.products.variant import ProductVariant
+from wh_product_manager.suppliers.service import SupplierService
 
 
 class ProductService:
@@ -36,66 +38,87 @@ class ProductService:
         self.settings = settings
         self.logger = logger
 
+        self.inventory_service = InventoryService(shopify_client, settings, logger)
+        self.supplier_service = SupplierService(shopify_client, settings, logger)
+
         # Initialize sub-managers
-        self.parent = ParentProductManager(shopify_client, logger)
-        self.variant = VariantProductManager(shopify_client, logger)
+        self.parent = ProductParent(shopify_client, logger)
+        self.variant = ProductVariant(shopify_client, logger)
 
-    async def create_product_with_variants(
-        self,
-        product_data: dict[str, Any],
-        variants: list[dict[str, Any]],
-    ) -> dict[str, Any]:
+    async def create_products_for_supplier(self, supplier_name: str):
         """
-        Create a product parent and its variants
+        Create products for a given supplier
+        Orchestrates the creation of parent and variant products
 
         Args:
-            product_data: Parent product data
-            variants: List of variant data
-
-        Returns:
-            dict: Summary of created product and variants
+            supplier_name: Name of the supplier to create products for
         """
-        self.logger.info("Creating product with variants...")
+        self.logger.info(f"Starting product creation for supplier: {supplier_name}")
 
-        try:
-            # Create parent product
-            parent_result = await self.parent.create_product(product_data)
-            product_id = parent_result["product"]["id"]
-            self.logger.info(f"Created parent product: {product_id}")
+        inventory, new_products, existing_products = await self._prepare_product_data(
+            supplier_name
+        )
 
-            # Create variants
-            created_variants: list[dict[str, Any]] = []
-            for variant_data in variants:
-                variant_result = await self.variant.create_variant(
-                    product_id, variant_data
-                )
-                created_variants.append(variant_result["productVariant"])
-                self.logger.info(
-                    f"Created variant: {variant_result['productVariant']['id']}"
-                )
+        return {
+            "found": len(inventory),
+            "created": len(new_products),
+            "skipped": len(existing_products),
+        }
 
-            return {
-                "status": "success",
-                "product_id": product_id,
-                "variants_created": len(created_variants),
-                "variants": created_variants,
-            }
-
-        except Exception as e:
-            self.logger.error(f"Failed to create product with variants: {str(e)}")
-            raise
-
-    async def disable_stale_products(
-        self, products: list[dict[str, Any]]
-    ) -> dict[str, Any]:
+    async def update_products_for_supplier(self, supplier_name: str):
         """
-        Disable products older than grace period
+        Update products for a given supplier
+        Orchestrates the update of parent and variant products
 
         Args:
-            products: List of product dictionaries
+            supplier_name: Name of the supplier to update products for
+        """
+        self.logger.info(f"Starting product update for supplier: {supplier_name}")
+
+        inventory, _, existing_products = await self._prepare_product_data(
+            supplier_name
+        )
+
+        return {
+            "found": len(inventory),
+            "updated": len(existing_products),
+        }
+
+    async def _prepare_product_data(
+        self, supplier_name: str
+    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+        """
+        Prepare product data for creation and update
+        Fetches supplier data and current inventory to determine which products need to be created or updated
+
+        Args:
+            supplier_name: Name of the supplier to prepare product data for
 
         Returns:
-            dict: Summary of disabled products
+            tuple: Prepared product data categorized into new and existing products
+                    (
+                        inventory: dict[str, Any],
+                        new_products: dict[str, Any],
+                        existing_products: dict[str, Any]
+                    )
         """
-        grace_period = self.settings.PRODUCT_GRACE_PERIOD_IN_DAYS
-        return await self.parent.disable_stale_products(products, grace_period)
+
+        inventory = await self.inventory_service.get_current_inventory(
+            supplier=supplier_name, return_ids=True
+        )
+
+        supplier = await self.supplier_service.get_supplier(supplier_name)
+        supplier_data = await supplier.get_unified_data()
+
+        if supplier_data.products is None:
+            self.logger.warning(f"No products found for supplier: {supplier_name}")
+            return {}, {}, {}
+
+        new_products = {
+            k: v for k, v in supplier_data.products.items() if k not in inventory.keys()
+        }
+        existing_products = {
+            k: v for k, v in supplier_data.products.items() if k in inventory.keys()
+        }
+
+        return inventory, new_products, existing_products

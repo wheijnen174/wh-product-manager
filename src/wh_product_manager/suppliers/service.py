@@ -38,12 +38,31 @@ class SupplierService:
         self.logger = logger
 
         self.suppliers: dict[str, BaseSupplier] = {
-            "one-dc": Supplier_OneDC(self.shopify_client, self.settings, self.logger),
+            "one-dc": Supplier_OneDC(
+                name="One-DC",
+                shopify_client=self.shopify_client,
+                settings=self.settings,
+                logger=self.logger,
+            ),
         }
 
         self.logger.info(
             f"SupplierService initialized with suppliers: {list(self.suppliers.keys())}"
         )
+
+    async def supplier_exists(self, supplier_name: str) -> bool:
+        """
+        Check if a supplier exists by name
+
+        Args:
+            supplier_name: Name of the supplier to check
+
+        Returns:
+            True if supplier exists, False otherwise
+        """
+        exists = supplier_name in self.suppliers
+        self.logger.debug(f"Checked existence of supplier '{supplier_name}': {exists}")
+        return exists
 
     async def get_supplier(self, supplier_name: str) -> BaseSupplier:
         """

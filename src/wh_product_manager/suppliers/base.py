@@ -19,12 +19,17 @@ class BaseSupplier(ABC):
     """Abstract base class for all suppliers"""
 
     def __init__(
-        self, shopify_client: ShopifyGraphQLClient, settings: Settings, logger: Logger
+        self,
+        name: str,
+        shopify_client: ShopifyGraphQLClient,
+        settings: Settings,
+        logger: Logger,
     ):
         """
         Initialize supplier
 
         Args:
+            name: Name of the supplier
             shopify_client: ShopifyGraphQLClient instance
             settings: Application settings
             logger: Logger instance
@@ -32,7 +37,7 @@ class BaseSupplier(ABC):
         self.shopify_client = shopify_client
         self.settings = settings
         self.logger = logger
-        self.name = self.__class__.__name__
+        self.name = name
 
     @abstractmethod
     async def fetch_raw_data(self) -> dict[str, Any]:
