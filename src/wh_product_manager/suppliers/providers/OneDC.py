@@ -9,7 +9,14 @@ import httpx
 import xmltodict
 
 from wh_product_manager.suppliers.base import BaseSupplier
+from wh_product_manager.suppliers.helpers.countryname_conversion import (
+    CountrynameConversion,
+)
 from wh_product_manager.suppliers.schemas import UnifiedProduct, UnifiedVariant
+from wh_product_manager.utils.formatters import (
+    normalize_string,
+    string_needs_normalization,
+)
 
 
 class Supplier_OneDC(BaseSupplier):
@@ -43,7 +50,10 @@ class Supplier_OneDC(BaseSupplier):
         """
         try:
             # Offline data for testing purposes
-            with open("data/onedc_product_data_20260210.xml", "r") as file:
+            from wh_product_manager.utils.data_loader import get_assets_dir
+
+            assets_dir = get_assets_dir()
+            with open(assets_dir / "onedc_product_data_20260210.xml", "r") as file:
                 xml_content = file.read()
 
                 data = xmltodict.parse(xml_content)
@@ -80,7 +90,11 @@ class Supplier_OneDC(BaseSupplier):
             dict[str, UnifiedProduct]: Transformed products where key is parent SKU
         """
 
-        # return {"product1": None}  # TODO: Implement transformation logic
+        conversion_map = CountrynameConversion.map_name_to_iso(self.logger)
+
+        import json
+
+        json.dumps(conversion_map)
 
         try:
             self.logger.info("Supplier_OneDC - Transforming data...")
@@ -91,9 +105,40 @@ class Supplier_OneDC(BaseSupplier):
                 price = float(product.get("prices").get("recommended_retail_price"))
                 cost = float(product.get("prices").get("b2b_price"))
                 weight = product.get("weight")
-                country_of_origin = product.get(
-                    "country_of_origin"
-                )  # TODO: Convert Dutch naming to ISO code
+
+                if product.get("country_of_origin"):
+                    country_name: str = product.get("country_of_origin")
+                    if string_needs_normalization(country_name):
+                        self.logger.debug(
+                            f"Supplier_OneDC - Country name '{country_name}' needs normalization"
+                        )
+                        country_name = normalize_string(country_name)
+                        self.logger.debug(
+                            f"Supplier_OneDC - Normalized country name: '{country_name}'"
+                        )
+
+                    country_of_origin = conversion_map.get(country_name.lower())
+                else:
+                    country_of_origin = None
+
+                country_of_origin = (
+                    country_of_origin.upper() if country_of_origin else None
+                )
+
+                if (
+                    country_of_origin is None
+                    and product.get("country_of_origin") is not None
+                ):
+                    print(
+                        f"Country name '{country_name}' needs normalization: ",
+                        string_needs_normalization(country_name),
+                        ". Normalized name: ",
+                        normalize_string(country_name),
+                    )
+                    # self.logger.warning(
+                    #     f"Supplier_OneDC - Country of origin '{country_name}' not found in conversion map"
+                    # )
+
                 hscode = int(product.get("hscode")) if product.get("hscode") else None
 
                 # Transform variants

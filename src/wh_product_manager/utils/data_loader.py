@@ -7,61 +7,62 @@ import csv
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 
-def get_data_dir() -> Path:
+def get_assets_dir() -> Path:
     """
-    Get the data directory path
+    Get the assets directory path
     Works for both development and compiled EXE
     """
     if getattr(sys, "frozen", False):
         # Running as compiled EXE
         # EXE is in: dist/WH-Product-Manager.exe
-        # Data is in: dist/data/
+        # Data is in: dist/assets/
         exe_dir = Path(sys.executable).parent
-        data_dir = exe_dir / "data"
+        data_dir = exe_dir / "assets"
     else:
         # Running as Python script
         # Script is in: src/wh_product_manager/
-        # Data is in: data/ (at project root)
+        # Data is in: assets/ (at project root)
         project_root = Path(__file__).parent.parent.parent.parent
-        data_dir = project_root / "data"
+        data_dir = project_root / "assets"
 
     if not data_dir.exists():
         raise FileNotFoundError(
-            f"Data directory not found at {data_dir}\n"
-            f"Make sure 'data/' folder exists next to the EXE or at project root"
+            f"Assets directory not found at {data_dir}\n"
+            f"Make sure 'assets/' folder exists next to the EXE or at project root"
         )
 
     return data_dir
 
 
-def load_json(filename: str) -> dict:
-    """Load a JSON file from the data directory"""
-    data_dir = get_data_dir()
+def load_json(filename: str) -> dict[Any, Any]:
+    """Load a JSON file from the assets directory"""
+    data_dir = get_assets_dir()
     filepath = data_dir / filename
 
     if not filepath.exists():
-        raise FileNotFoundError(f"Data file not found: {filepath}")
+        raise FileNotFoundError(f"Assets file not found: {filepath}")
 
     with open(filepath, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def load_csv(filename: str) -> list[dict]:
-    """Load a CSV file from the data directory"""
-    data_dir = get_data_dir()
+def load_csv(filename: str, delimiter: str = ",") -> list[dict[Any, Any]]:
+    """Load a CSV file from the assets directory"""
+    data_dir = get_assets_dir()
     filepath = data_dir / filename
 
     if not filepath.exists():
-        raise FileNotFoundError(f"Data file not found: {filepath}")
+        raise FileNotFoundError(f"Assets file not found: {filepath}")
 
-    with open(filepath, "r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
+    with open(filepath, "r", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f, delimiter=delimiter)
         return list(reader)
 
 
 def get_log_file() -> Path:
     """Get the path to app.log"""
-    data_dir = get_data_dir()
+    data_dir = get_assets_dir()
     return data_dir / "app.log"

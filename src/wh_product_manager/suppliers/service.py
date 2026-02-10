@@ -38,7 +38,7 @@ class SupplierService:
         self.logger = logger
 
         self.suppliers: dict[str, BaseSupplier] = {
-            "One-DC": Supplier_OneDC(self.shopify_client, self.settings, self.logger),
+            "one-dc": Supplier_OneDC(self.shopify_client, self.settings, self.logger),
         }
 
         self.logger.info(

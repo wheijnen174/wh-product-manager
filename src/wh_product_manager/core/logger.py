@@ -47,7 +47,7 @@ class Logger:
         self.logger = logging.getLogger(name)
 
         # Set logging level
-        log_level = getattr(logging, level.upper(), logging.INFO)
+        log_level = getattr(logging, level.upper(), logging.DEBUG)
         self.logger.setLevel(log_level)
 
         # Remove existing handlers to avoid duplicates

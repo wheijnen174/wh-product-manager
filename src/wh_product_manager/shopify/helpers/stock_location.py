@@ -1,5 +1,5 @@
 """
-Shopify helper functions
+Shopify helper module for stock location management
 Standalone utilities for Shopify API operations
 """
 

@@ -24,7 +24,7 @@ async def get_all_products() -> JSONResponse:
 async def get_supplier_products(supplier_name: str) -> JSONResponse:
     """Fetch raw product data from the specified supplier"""
     try:
-        supplier = await services.supplier_service.get_supplier(supplier_name)
+        supplier = await services.supplier_service.get_supplier(supplier_name.lower())
     except ValueError as e:
         return JSONResponse(
             status_code=404,
@@ -35,7 +35,7 @@ async def get_supplier_products(supplier_name: str) -> JSONResponse:
 
     return JSONResponse(
         status_code=200,
-        content=unified_data,
+        content={name: item for name, item in unified_data.to_dict().items()},
     )
 
 
@@ -43,7 +43,7 @@ async def get_supplier_products(supplier_name: str) -> JSONResponse:
 async def get_supplier_products_raw(supplier_name: str) -> JSONResponse:
     """Fetch raw product data from the specified supplier"""
     try:
-        supplier = await services.supplier_service.get_supplier(supplier_name)
+        supplier = await services.supplier_service.get_supplier(supplier_name.lower())
     except ValueError as e:
         return JSONResponse(
             status_code=404,
