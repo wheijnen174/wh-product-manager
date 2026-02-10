@@ -30,7 +30,7 @@ class Logger:
     def __init__(
         self,
         name: str = "wh_product_manager",
-        level: str = "INFO",
+        level: str = "DEBUG",
     ):
         """
         Initialize the logger
@@ -47,7 +47,7 @@ class Logger:
         self.logger = logging.getLogger(name)
 
         # Set logging level
-        log_level = getattr(logging, level.upper(), logging.DEBUG)
+        log_level = getattr(logging, level.upper(), logging.INFO)
         self.logger.setLevel(log_level)
 
         # Remove existing handlers to avoid duplicates

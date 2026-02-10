@@ -16,6 +16,17 @@ class CountrynameConversion:
     def map_name_to_iso(
         logger: Logger, input_lang: str | None = None
     ) -> dict[str, str]:
+        """
+        Prepare a mapping of country names to ISO codes for a specific input language or all languages combined.
+
+        Args:
+            logger: Logger instance for logging
+            input_lang: Optional language code to filter country names (e.g., 'en', 'fr'). If None, includes all languages.
+
+        Returns:
+            dict[str, str]: Mapping of country names (lowercased) to their corresponding ISO codes (lowercased)
+        """
+
         if input_lang is None:
             logger.debug(
                 "Preparing country conversion map 'name_to_iso' for all languages combined."
@@ -51,72 +62,32 @@ class CountrynameConversion:
         return prepared_map
 
     @staticmethod
-    def name_to_iso_code(country_name: str, input_lang: str, logger: Logger) -> str:
+    def map_iso_to_name(logger: Logger, input_lang: str) -> dict[str, str]:
         """
-        Convert a country name to the format expected by ISO codes
+        Prepare a mapping of ISO codes to country names for a specific input language.
 
         Args:
-            country_name: The original country name
-            input_lang: The language of the input country name in ISO Code format (e.g., 'nl' for Dutch)
-            logger: Logger instance for logging conversion process
+            logger: Logger instance for logging
+            input_lang: Language code to filter country names (e.g., 'en', 'fr')
 
         Returns:
-            str: The converted country name in ISO code format
+            dict[str, str]: Mapping of ISO codes (lowercased) to their corresponding country names
         """
-        logger.debug(f"Converting country name '{country_name}' to ISO code format.")
 
-        conversion_map = load_json("country_mappings.json")
-
-        conversion_map = {
-            values[input_lang.lower()].lower(): code
-            for code, values in conversion_map.items()
-        }
-
-        print(conversion_map)
-
-        converted_name = conversion_map.get(country_name.lower())
-
-        if not converted_name:
-            logger.warning(
-                f"No mapping found for country name '{country_name}' with input language '{input_lang.lower()}'. Returning original name."
-            )
-            converted_name = country_name
-        else:
-            logger.debug(
-                f"Converted country name '{country_name}' to '{converted_name}'."
-            )
-
-        return converted_name
-
-    @staticmethod
-    def iso_code_to_name(country_code: str, input_lang: str, logger: Logger) -> str:
-        """
-        Convert a country name from ISO code format back to the original name
-
-        Args:
-            country_code: The original country code
-            input_lang: The language of the input country name in ISO Code format (e.g., 'nl' for Dutch)
-            logger: Logger instance for logging conversion process
-
-        Returns:
-            str: The converted country name in original format
-        """
         logger.debug(
-            f"Converting country '{country_code}' from ISO code format to original name."
+            f"Preparing country conversion map 'iso_to_name' for input language '{input_lang}'."
         )
 
         conversion_map = load_json("country_mappings.json")
 
-        converted_name = conversion_map.get(country_code, {}).get(input_lang.lower())
+        prepared_map: dict[str, str | list[str]] = {
+            code.lower(): values.get(input_lang, "")
+            for code, values in conversion_map.items()
+        }
 
-        if not converted_name:
-            logger.warning(
-                f"No mapping found for country code '{country_code}' with input language '{input_lang.lower()}'. Returning original code."
-            )
-            converted_name = country_code
-        else:
-            logger.debug(
-                f"Converted country code '{country_code}' to '{converted_name}'."
-            )
+        prepared_map = {
+            code.lower(): str(values) if isinstance(values, str) else str(values[0])
+            for code, values in prepared_map.items()
+        }
 
-        return converted_name
+        return prepared_map  # type: ignore

@@ -2,7 +2,21 @@
 Various helper functions
 """
 
+import re
 import unicodedata
+
+
+def regex(value: str, type: str = "str") -> str | int | float:
+    pattern = None
+    if type == "num":
+        pattern = re.compile(r"[^0-9.,]+")
+    elif type == "str":
+        pattern = re.compile(r"[^0-9A-Za-zÀ-ÖØ-öø-ÿ .,!?()#:+\ -]+")
+
+    if pattern:
+        value = pattern.sub("", value)
+
+    return value
 
 
 def string_needs_normalization(text: str) -> bool:
