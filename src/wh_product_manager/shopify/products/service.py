@@ -13,6 +13,7 @@ from wh_product_manager.shopify.client import ShopifyGraphQLClient
 from wh_product_manager.shopify.inventory import InventoryService
 from wh_product_manager.shopify.products.parent import ProductParent
 from wh_product_manager.shopify.products.variant import ProductVariant
+from wh_product_manager.shopify.publishing import Publications
 from wh_product_manager.suppliers.base import BaseSupplier
 from wh_product_manager.suppliers.schemas import UnifiedProduct
 from wh_product_manager.suppliers.service import SupplierService
@@ -29,6 +30,7 @@ class ProductService:
         shopify_client: ShopifyGraphQLClient,
         settings: Settings,
         logger: Logger,
+        publications: Publications,
     ):
         """
         Initialize product service
@@ -41,6 +43,7 @@ class ProductService:
         self.shopify_client = shopify_client
         self.settings = settings
         self.logger = logger
+        self.publications = publications
 
         self.inventory_service = InventoryService(shopify_client, settings, logger)
         self.supplier_service = SupplierService(shopify_client, settings, logger)
@@ -69,7 +72,11 @@ class ProductService:
 
         # Prepare and fetch categories. Create any new categories if needed
         categories_manager = Categories(
-            self.shopify_client, self.settings, self.logger, new_products
+            self.shopify_client,
+            self.settings,
+            self.logger,
+            self.publications,
+            new_products,
         )
 
         categories = await categories_manager.get_categories()  # type: ignore  # noqa: F841

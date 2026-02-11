@@ -1,10 +1,10 @@
-import json
 from asyncio import sleep
 from typing import Any
 
 from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
+from wh_product_manager.shopify.publishing import Publications
 from wh_product_manager.suppliers.schemas import UnifiedProduct
 from wh_product_manager.utils.data_loader import load_json, save_json
 
@@ -15,11 +15,13 @@ class Categories:
         shopify_client: ShopifyGraphQLClient,
         settings: Settings,
         logger: Logger,
+        publications: Publications,
         products: dict[str, UnifiedProduct],
     ):
         self.shopify_client = shopify_client
         self.settings = settings
         self.logger = logger
+        self.publications = publications
         self.products = products
 
     async def get_categories(self) -> dict[str, Any]:
@@ -37,15 +39,33 @@ class Categories:
             if breadcrumbs not in existing_categories
         }
 
+        # TODO: Implement the 'collections.json' file data processing!
+
+        publish_object_ids: list[str] = []
+
+        self.logger.info(f"Creating {len(new_categories)} new categories")
+
         for breadcrumbs, details in new_categories.items():
+            # Create new category and add Shopify details to existing categories dict (which will be used for product creation)
             new_details = await self._create_category(
                 breadcrumbs, details, self.shopify_client, self.logger
             )
             existing_categories[breadcrumbs] = new_details
 
-            raise NotImplementedError(
-                "Debug: Check new category details after creation"
-            )  # Debug: Stop execution to check new category details
+            # Add new category ID to list of objects to publish
+            publish_object_ids.append(new_details["collection_id"])
+
+        self.logger.info(
+            f"Created {len(new_categories)} new categories, now publishing all new categories"
+        )
+
+        await self.publications.publish_shopify_objects(
+            object_ids=publish_object_ids,
+            shopify_client=self.shopify_client,
+            logger=self.logger,
+        )
+
+        self.logger.info(f"Published {len(publish_object_ids)} new categories")
 
         categories = {
             breadcrumbs: details
@@ -64,11 +84,8 @@ class Categories:
                 f"{len(categories_missing_details)} categories are missing Shopify details and will be skipped: {list(categories_missing_details.keys())}"
             )
 
-        print(
-            json.dumps(categories_missing_details)
-        )  # Debug: Print necessary categories
         raise NotImplementedError(
-            "Debug: Check necessary categories before proceeding"
+            "Einde! Debug: Check necessary categories before proceeding"
         )  # Debug: Stop execution to check necessary categories
 
         return categories

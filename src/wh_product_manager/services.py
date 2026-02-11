@@ -8,6 +8,7 @@ from wh_product_manager.core.logger import Logger
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
 from wh_product_manager.shopify.inventory import InventoryService
 from wh_product_manager.shopify.products import ProductService
+from wh_product_manager.shopify.publishing import Publications
 from wh_product_manager.suppliers.service import SupplierService
 
 
@@ -29,12 +30,14 @@ class Services:
 
         self.shopify_client = ShopifyGraphQLClient(settings, self.logger)
 
+        self.publications = Publications(self.shopify_client, self.logger)
+
         self.shopify_inventory = InventoryService(
             self.shopify_client, self.settings, self.logger
         )
 
         self.product_service = ProductService(
-            self.shopify_client, settings, self.logger
+            self.shopify_client, settings, self.logger, self.publications
         )
 
         self.supplier_service = SupplierService(
