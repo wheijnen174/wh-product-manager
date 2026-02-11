@@ -4,20 +4,32 @@ Centralized GraphQL queries and mutations for products
 """
 
 
-def get_create_product_mutation() -> str:
-    """GraphQL mutation for creating a product parent"""
-    return """
-        mutation CreateProduct($input: ProductInput!) {
-            productCreate(input: $input) {
-                product {
+def mutation_create_product_parent(mutation_name: str | None = None) -> str:
+    """
+    GraphQL mutation for creating a parent product
+
+    Query args:
+        media: List of media inputs for product images
+        product: ProductCreateInput object containing product details
+
+    Args:
+        mutation_name: Optional name for the mutation (for batching/debugging)
+    Returns:
+        str: GraphQL mutation string
+    """
+
+    return f"""
+        mutation {mutation_name if mutation_name else ""}($media: [CreateMediaInput!], $product: ProductCreateInput) {{
+            productCreate(media: $media, product: $product) {{
+                product {{
                     id
                     title
                     handle
-                }
-                userErrors {
+                }}
+                userErrors {{
                     field
                     message
-                }
-            }
-        }
+                }}
+            }}
+        }}
     """

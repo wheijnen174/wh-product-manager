@@ -49,6 +49,15 @@ def load_json(filename: str) -> dict[Any, Any]:
         return json.load(f)
 
 
+def save_json(filename: str, data: dict[Any, Any]) -> None:
+    """Save a JSON file to the assets directory"""
+    data_dir = get_assets_dir()
+    filepath = data_dir / filename
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False)
+
+
 def load_csv(filename: str, delimiter: str = ",") -> list[dict[Any, Any]]:
     """Load a CSV file from the assets directory"""
     data_dir = get_assets_dir()

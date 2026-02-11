@@ -4,7 +4,10 @@ Standard format for all supplier data
 """
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
+
+from slugify import slugify
 
 
 @dataclass
@@ -34,6 +37,14 @@ class UnifiedVariant:
             "country_of_origin": self.country_of_origin,
             "hscode": self.hscode,
         }
+
+    def graphql_create(self) -> dict[str, Any]:
+        """Format variant data for Shopify GraphQL product creation"""
+        return {"Test": "Create"}
+
+    def graphql_update(self) -> dict[str, Any]:
+        """Format variant data for Shopify GraphQL product update"""
+        return {"Test": "Update"}
 
 
 @dataclass
@@ -99,6 +110,9 @@ class UnifiedProduct:
     category: str | None = None
     description: str | None = None
     properties: dict[str, UnifiedProperty] | None = None
+    parent_sku: str | None = None
+    update_time: str | None = None
+    supplier_name: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
@@ -111,6 +125,53 @@ class UnifiedProduct:
             "variants": [v.to_dict() for v in self.variants],
             "properties": {k: v.to_dict() for k, v in (self.properties or {}).items()},
         }
+
+    def graphql_create(self) -> dict[str, Any]:
+        """Format product data for Shopify GraphQL product creation"""
+        if self.parent_sku is None:
+            raise TypeError("parent_sku must be set for GraphQL product creation")
+        if self.update_time is None:
+            self.update_time = datetime.now(timezone.utc).isoformat()
+        if self.supplier_name is None:
+            raise TypeError("supplier_name must be set for GraphQL product creation")
+
+        return {
+            "media": [
+                {
+                    "alt": self.title + " - " + str(i + 1),
+                    "mediaContentType": "IMAGE",
+                    "originalSource": url,
+                }
+                for i, url in enumerate(self.images or [])
+            ],
+            "product": {
+                "title": self.title,
+                "descriptionHtml": self.description or "",
+                "handle": slugify(self.title + "-" + str(self.supplier_product_id)),
+                "metafields": [
+                    {
+                        "namespace": "whpm",
+                        "key": "parent_sku",
+                        "value": self.parent_sku,
+                    },
+                    {
+                        "namespace": "whpm",
+                        "key": "update_time",
+                        "value": self.update_time,
+                    },
+                    {
+                        "namespace": "whpm",
+                        "key": "number_of_sales",
+                        "value": "0",
+                    },
+                ],
+                "vendor": self.supplier_name,
+            },
+        }
+
+    def graphql_update(self) -> dict[str, Any]:
+        """Format product data for Shopify GraphQL product update"""
+        return {"Test": "Update"}
 
 
 @dataclass

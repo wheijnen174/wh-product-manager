@@ -125,7 +125,8 @@ class InventoryService:
         """
         Create GraphQL query for retrieving inventory data
 
-        Args:
+        Query args:
+            batch_size: Number of inventory items to fetch per batch
             cursor: Optional pagination cursor for Shopify API
         Returns:
             str: GraphQL query string

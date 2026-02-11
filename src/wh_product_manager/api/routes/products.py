@@ -17,6 +17,15 @@ async def shopify_inventory(
     supplier: str | None = None, return_ids: bool = True
 ) -> JSONResponse:
     """Endpoint to trigger Shopify inventory sync"""
+    if supplier:
+        supplier_exists = await services.supplier_service.supplier_exists(supplier)
+
+        if not supplier_exists:
+            return JSONResponse(
+                status_code=404,
+                content={"error": f"Supplier '{supplier}' not found"},
+            )
+
     async with product_operation_lock:
         inventory_data = await services.shopify_inventory.get_current_inventory(
             supplier=supplier, return_ids=return_ids
@@ -40,7 +49,11 @@ async def create_products(supplier: str) -> JSONResponse:
         )
 
     async with product_operation_lock:
-        result = await services.product_service.create_products_for_supplier(supplier)
+        supplier_obj = await services.supplier_service.get_supplier(supplier)
+
+        result = await services.product_service.create_products_for_supplier(
+            supplier_obj
+        )
 
         return JSONResponse(
             status_code=200,
@@ -63,7 +76,13 @@ async def update_products(supplier: str) -> JSONResponse:
         )
 
     async with product_operation_lock:
-        result = await services.product_service.update_products_for_supplier(supplier)
+        supplier_obj = await services.supplier_service.get_supplier(supplier)
+
+        # TODO: Also implement updating of Shopify categories (not collections)!
+
+        result = await services.product_service.update_products_for_supplier(
+            supplier_obj
+        )
 
         return JSONResponse(
             status_code=200,
