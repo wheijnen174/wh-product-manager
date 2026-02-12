@@ -79,13 +79,23 @@ class ProductService:
             new_products,
         )
 
-        categories = await categories_manager.get_categories()  # type: ignore  # noqa: F841
-        raise NotImplementedError("Category management not implemented yet")
+        categories = await categories_manager.get_product_categories()  # type: ignore  # noqa: F841
 
         responses: list[dict[str, Any]] = []
 
         for parent_sku, product in new_products.items():
-            self.logger.info(f"Creating product: '{parent_sku} - {product.title}'")
+            self.logger.debug(f"Creating product: '{parent_sku} - {product.title}'")
+
+            necessary_categories = [
+                " > ".join(str(product.category).split(" > ")[: i + 1])
+                for i in range(len(str(product.category).split(" > ")))
+            ]
+
+            if not all(cat in categories for cat in necessary_categories):
+                self.logger.warning(
+                    f"Skipping product '{parent_sku}' - '{product.title}' due to missing categories: {necessary_categories}"
+                )
+                continue  # Skip product creation if any category is missing
 
             product.parent_sku = parent_sku
             product.update_time = update_time

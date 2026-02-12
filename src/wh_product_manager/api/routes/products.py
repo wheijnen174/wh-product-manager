@@ -3,13 +3,12 @@ import asyncio
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from wh_product_manager.config import Settings
-from wh_product_manager.services import Services
+from wh_product_manager.services import get_services
 
 router = APIRouter()
 product_operation_lock = asyncio.Lock()
 
-services = Services(settings=Settings())
+services = get_services()
 
 
 @router.get("/inventory")

@@ -3,7 +3,6 @@ Shopify parent product operations
 Manages creation, updating, and deletion of parent products
 """
 
-import json
 from typing import Any
 
 from wh_product_manager.core.logger import Logger
@@ -29,18 +28,13 @@ class ProductParent:
     async def graphql_create(self, product: UnifiedProduct) -> dict[str, Any]:
         """Format product data for Shopify GraphQL product creation"""
 
+        product_graphql = product.graphql_create()
+
         mutation = mutation_create_product_parent()
         variables: dict[str, Any] = {
-            "media": product.graphql_create().get("media", []),
-            "product": product.graphql_create().get("product", {}),
+            "media": product_graphql.get("media", []),
+            "product": product_graphql.get("product", {}),
         }
-
-        print(
-            json.dumps(variables, indent=2)
-        )  # Debug: Print variables before sending request
-        raise Exception(
-            "Debug: Check variables before sending request"
-        )  # Debug: Stop execution to check variables
 
         response = await self.shopify_client.query(mutation, variables)
 

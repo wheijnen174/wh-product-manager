@@ -69,3 +69,7 @@ class Settings(BaseSettings):
                 "SHOPIFY_ACCESS_TOKEN must be either in '.env.shopify-token' file "
                 "or in .env file as SHOPIFY_ACCESS_TOKEN"
             )
+
+
+def get_settings() -> Settings:
+    return Settings()

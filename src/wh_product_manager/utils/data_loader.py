@@ -49,13 +49,21 @@ def load_json(filename: str) -> dict[Any, Any]:
         return json.load(f)
 
 
-def save_json(filename: str, data: dict[Any, Any]) -> None:
+def save_json(
+    filename: str,
+    data: dict[Any, Any],
+    sort_on_keys: bool = False,
+    indent: bool = False,
+) -> None:
     """Save a JSON file to the assets directory"""
     data_dir = get_assets_dir()
     filepath = data_dir / filename
 
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False)
+    if sort_on_keys:
+        data = dict(sorted(data.items()))
+
+    with open(filepath, "w+", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4 if indent else None)
 
 
 def load_csv(filename: str, delimiter: str = ",") -> list[dict[Any, Any]]:
