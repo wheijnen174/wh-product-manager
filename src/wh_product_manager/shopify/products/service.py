@@ -84,27 +84,44 @@ class ProductService:
         responses: list[dict[str, Any]] = []
 
         for parent_sku, product in new_products.items():
-            self.logger.debug(f"Creating product: '{parent_sku} - {product.title}'")
+            try:
+                self.logger.debug(f"Creating product: '{parent_sku} - {product.title}'")
 
-            necessary_categories = [
-                " > ".join(str(product.category).split(" > ")[: i + 1])
-                for i in range(len(str(product.category).split(" > ")))
-            ]
+                necessary_categories = [
+                    " > ".join(str(product.category).split(" > ")[: i + 1])
+                    for i in range(len(str(product.category).split(" > ")))
+                ]
 
-            if not all(cat in categories for cat in necessary_categories):
-                self.logger.warning(
-                    f"Skipping product '{parent_sku}' - '{product.title}' due to missing categories: {necessary_categories}"
+                if not all(cat in categories for cat in necessary_categories):
+                    self.logger.warning(
+                        f"Skipping product '{parent_sku}' - '{product.title}' due to missing categories: {necessary_categories}"
+                    )
+                    continue  # Skip product creation if any category is missing
+
+                product.extra_data["parent_sku"] = parent_sku
+                product.extra_data["update_time"] = update_time
+                product.extra_data["supplier_name"] = supplier.name
+
+                product.extra_data["shopify_category"] = categories.get(
+                    str(product.category), {}
+                ).get("shopify_category")
+
+                product.extra_data["shopify_collections"] = [
+                    categories.get(str(cat), {}).get("collection_id")
+                    for cat in necessary_categories
+                ]
+
+                product.extra_data["product_options"] = [
+                    variant.size_title for variant in product.variants
+                ]
+
+                response = await self.parent.graphql_create(product)
+                responses.append(response)
+
+            except Exception as e:
+                self.logger.error(
+                    f"Error creating product '{parent_sku} - {product.title}': {str(e)}"
                 )
-                continue  # Skip product creation if any category is missing
-
-            product.parent_sku = parent_sku
-            product.update_time = update_time
-            product.supplier_name = (
-                supplier.name
-            )  # Set supplier_name for GraphQL creation
-
-            response = await self.parent.graphql_create(product)
-            responses.append(response)
 
             break  # Remove this break after finishing the actual creation logic
 

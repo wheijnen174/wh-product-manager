@@ -3,7 +3,8 @@ Unified supplier data schemas
 Standard format for all supplier data
 """
 
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
@@ -110,9 +111,7 @@ class UnifiedProduct:
     category: str | None = None
     description: str | None = None
     properties: dict[str, UnifiedProperty] | None = None
-    parent_sku: str | None = None
-    update_time: str | None = None
-    supplier_name: str | None = None
+    extra_data: dict[str, Any] = field(default_factory=lambda: {})
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
@@ -124,16 +123,50 @@ class UnifiedProduct:
             "images": self.images,
             "variants": [v.to_dict() for v in self.variants],
             "properties": {k: v.to_dict() for k, v in (self.properties or {}).items()},
+            "extra_data": self.extra_data,
         }
 
     def graphql_create(self) -> dict[str, Any]:
         """Format product data for Shopify GraphQL product creation"""
-        if self.parent_sku is None:
-            raise TypeError("parent_sku must be set for GraphQL product creation")
-        if self.update_time is None:
-            self.update_time = datetime.now(timezone.utc).isoformat()
-        if self.supplier_name is None:
-            raise TypeError("supplier_name must be set for GraphQL product creation")
+        if self.extra_data.get("parent_sku") is None:
+            raise TypeError(
+                "'parent_sku' must be set to 'extra_data' for GraphQL product creation"
+            )
+        if self.extra_data.get("update_time") is None:
+            self.extra_data["update_time"] = datetime.now(timezone.utc).isoformat()
+        if self.extra_data.get("supplier_name") is None:
+            raise TypeError(
+                "'supplier_name' must be set to 'extra_data' for GraphQL product creation"
+            )
+
+        category = self.extra_data.get("shopify_category", None)
+        category = "gid://shopify/TaxonomyCategory/" + category if category else None
+
+        collections_to_join = self.extra_data.get("shopify_collections", [])
+
+        product_options: list[Any] = self.extra_data.get("product_options", [])
+        if len(product_options) > 1 and None in product_options:
+            raise ValueError(
+                "'size_title' values must be set to all variants if there are multiple options"
+            )
+        elif len(product_options) > 0 and None not in product_options:
+            print(json.dumps(product_options, indent=2))
+            product_options = [
+                {
+                    "name": "Maat",
+                    "linkedMetafield": {
+                        "namespace": "product",
+                        "key": "product_size",
+                        "values": [
+                            "gid://shopify/Metaobject/494892187992",
+                            "gid://shopify/Metaobject/494892220760",
+                        ],
+                    },
+                }
+            ]
+            print(json.dumps(product_options, indent=2))
+        else:
+            product_options = [None]
 
         return {
             "media": [
@@ -148,16 +181,22 @@ class UnifiedProduct:
                 "title": self.title,
                 "descriptionHtml": self.description or "",
                 "handle": slugify(self.title + "-" + str(self.supplier_product_id)),
+                "category": category,
+                "collectionsToJoin": collections_to_join,
+                "productOptions": product_options
+                if product_options != [None]
+                else None,
+                "vendor": self.extra_data.get("supplier_name"),
                 "metafields": [
                     {
                         "namespace": "whpm",
-                        "key": "parent_sku",
-                        "value": self.parent_sku,
+                        "key": "head_article_number",
+                        "value": self.extra_data.get("parent_sku"),
                     },
                     {
                         "namespace": "whpm",
                         "key": "update_time",
-                        "value": self.update_time,
+                        "value": self.extra_data.get("update_time"),
                     },
                     {
                         "namespace": "whpm",
@@ -165,7 +204,6 @@ class UnifiedProduct:
                         "value": "0",
                     },
                 ],
-                "vendor": self.supplier_name,
             },
         }
 

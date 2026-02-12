@@ -3,6 +3,7 @@ Shopify Inventory Service
 Retrieves and manages product inventory from Shopify
 """
 
+import json
 from asyncio import sleep
 from typing import Any
 
@@ -208,6 +209,7 @@ class InventoryService:
             dict: Inventory organized by parent SKU
         """
 
+        print(json.dumps(batch_data, indent=2))
         for edge in batch_data:
             try:
                 node = edge["node"]
@@ -268,15 +270,17 @@ class InventoryService:
 
                 # Add basic variant info
                 variant_data["sku"] = node.get("sku")
-                variant_data["last_update"] = variant.get("metafield", {}).get("value")
+                variant_data["last_update"] = (
+                    variant.get("metafield", {}).get("value") or None
+                )
 
                 # Add cost if valid
-                cost = node.get("unitCost", {}).get("amount")
+                cost = node.get("unitCost", {}).get("amount") or 0
                 if self._is_valid_number(cost):
                     variant_data["cost"] = float(cost)
 
                 # Add price if valid
-                price = variant.get("price")
+                price = variant.get("price") or 0
                 if self._is_valid_number(price):
                     variant_data["price"] = float(price)
 
@@ -318,7 +322,7 @@ class InventoryService:
                 # Add variant to parent SKU
                 current_inventory[parent_sku]["variants"].append(variant_data)
 
-            except (KeyError, TypeError, StopIteration) as e:
+            except (AttributeError, KeyError, TypeError, StopIteration) as e:
                 self.logger.error(f"Error processing inventory item: {str(e)}")
                 continue
 

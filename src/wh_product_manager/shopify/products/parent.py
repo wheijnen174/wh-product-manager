@@ -38,4 +38,10 @@ class ProductParent:
 
         response = await self.shopify_client.query(mutation, variables)
 
-        return {product.title: response}
+        return {
+            product.title: {
+                "mutation": mutation,
+                "variables": variables,
+                "response": response,
+            }
+        }
