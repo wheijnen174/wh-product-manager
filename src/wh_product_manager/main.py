@@ -82,7 +82,8 @@ def create_app(app_settings: Settings) -> FastAPI:
             allow_headers=["*"],
         )
 
-    # Include routes
+    # ✅ MOVED: Import routes AFTER get_services is defined
+    # This prevents circular import issues
     from wh_product_manager.api.routes import health, products, suppliers
 
     app.include_router(health.router, prefix="/api/v1/health")
@@ -95,8 +96,12 @@ def create_app(app_settings: Settings) -> FastAPI:
         request: Request, exc: Exception
     ) -> JSONResponse:
         """Handle all unhandled exceptions globally"""
-        svc = get_services()
-        svc.logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+        try:
+            svc = get_services()
+            svc.logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+        except RuntimeError:
+            # Services not initialized yet
+            pass
 
         return JSONResponse(
             status_code=500,

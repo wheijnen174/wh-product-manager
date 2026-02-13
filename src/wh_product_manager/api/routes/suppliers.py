@@ -3,15 +3,20 @@
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from wh_product_manager.main import get_services
-
 router = APIRouter()
+
+
+def _get_services():
+    """Helper to get services (imports locally to avoid circular imports)"""
+    from wh_product_manager.main import get_services
+
+    return get_services()
 
 
 @router.get("/products")
 async def get_all_products() -> JSONResponse:
     """Fetch raw product data from all suppliers"""
-    services = get_services()
+    services = _get_services()
     data = await services.supplier_service.fetch_all_data()
 
     return JSONResponse(
@@ -23,7 +28,7 @@ async def get_all_products() -> JSONResponse:
 @router.get("/{supplier_name}/products")
 async def get_supplier_products(supplier_name: str) -> JSONResponse:
     """Fetch raw product data from the specified supplier"""
-    services = get_services()
+    services = _get_services()
 
     try:
         supplier = await services.supplier_service.get_supplier(supplier_name.lower())
@@ -44,7 +49,7 @@ async def get_supplier_products(supplier_name: str) -> JSONResponse:
 @router.get("/{supplier_name}/products/raw")
 async def get_supplier_products_raw(supplier_name: str) -> JSONResponse:
     """Fetch raw product data from the specified supplier"""
-    services = get_services()
+    services = _get_services()
 
     try:
         supplier = await services.supplier_service.get_supplier(supplier_name.lower())

@@ -1,14 +1,19 @@
+"""Products API routes"""
+
 import asyncio
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from wh_product_manager.services import get_services
-
 router = APIRouter()
 product_operation_lock = asyncio.Lock()
 
-services = get_services()
+
+def _get_services():
+    """Helper to get services (imports locally to avoid circular imports)"""
+    from wh_product_manager.main import get_services
+
+    return get_services()
 
 
 @router.get("/inventory")
@@ -16,6 +21,8 @@ async def shopify_inventory(
     supplier: str | None = None, return_ids: bool = True
 ) -> JSONResponse:
     """Endpoint to trigger Shopify inventory sync"""
+    services = _get_services()
+
     if supplier:
         supplier_exists = await services.supplier_service.supplier_exists(supplier)
 
@@ -39,6 +46,7 @@ async def shopify_inventory(
 @router.get("/create")
 async def create_products(supplier: str) -> JSONResponse:
     """Endpoint to trigger product creation for a supplier"""
+    services = _get_services()
     supplier_exists = await services.supplier_service.supplier_exists(supplier)
 
     if not supplier_exists:
@@ -66,6 +74,7 @@ async def create_products(supplier: str) -> JSONResponse:
 @router.get("/update")
 async def update_products(supplier: str) -> JSONResponse:
     """Endpoint to trigger product update for a supplier"""
+    services = _get_services()
     supplier_exists = await services.supplier_service.supplier_exists(supplier)
 
     if not supplier_exists:
