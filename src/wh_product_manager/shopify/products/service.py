@@ -31,6 +31,8 @@ class ProductService:
         settings: Settings,
         logger: Logger,
         publications: Publications,
+        inventory_service: InventoryService,
+        supplier_service: SupplierService,
     ):
         """
         Initialize product service
@@ -39,14 +41,17 @@ class ProductService:
             shopify_client: ShopifyGraphQLClient instance
             settings: Application settings
             logger: Logger instance
+            publications: Publications manager instance
+            inventory_service: InventoryService instance
+            supplier_service: SupplierService instance
         """
         self.shopify_client = shopify_client
         self.settings = settings
         self.logger = logger
         self.publications = publications
 
-        self.inventory_service = InventoryService(shopify_client, settings, logger)
-        self.supplier_service = SupplierService(shopify_client, settings, logger)
+        self.inventory_service = inventory_service
+        self.supplier_service = supplier_service
 
         # Initialize sub-managers
         self.parent = ProductParent(shopify_client, logger)

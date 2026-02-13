@@ -36,12 +36,17 @@ class Services:
             self.shopify_client, self.settings, self.logger
         )
 
-        self.product_service = ProductService(
-            self.shopify_client, settings, self.logger, self.publications
-        )
-
         self.supplier_service = SupplierService(
             self.shopify_client, settings, self.logger
+        )
+
+        self.product_service = ProductService(
+            self.shopify_client,
+            settings,
+            self.logger,
+            self.publications,
+            self.shopify_inventory,
+            self.supplier_service,
         )
 
         self.logger.info("Services Container initialized with all services")
