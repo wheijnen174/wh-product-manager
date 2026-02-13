@@ -14,11 +14,9 @@ class PublicationService:
     async def publish_shopify_objects(
         self,
         object_ids: list[str],
-        shopify_client: ShopifyGraphQLClient,
-        logger: Logger,
     ) -> None:
         if len(object_ids) == 0:
-            logger.info("No objects to publish")
+            self.logger.info("No objects to publish")
             return
 
         batch_size = 75  # Shopify allows up to 100, but using 75 to be safe with API limits and response size
@@ -61,9 +59,11 @@ class PublicationService:
                 )
 
                 if user_errors:
-                    logger.error(f"Failed to publish object {object_id}: {user_errors}")
+                    self.logger.error(
+                        f"Failed to publish object {object_id}: {user_errors}"
+                    )
                 else:
-                    logger.debug(f"Successfully published object {object_id}")
+                    self.logger.debug(f"Successfully published object {object_id}")
 
     async def get_publication_ids(self) -> dict[str, str]:
         """

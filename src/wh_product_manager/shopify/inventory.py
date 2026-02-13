@@ -3,7 +3,6 @@ Shopify Inventory Service
 Retrieves and manages product inventory from Shopify
 """
 
-import json
 from asyncio import sleep
 from typing import Any
 
@@ -209,7 +208,6 @@ class InventoryService:
             dict: Inventory organized by parent SKU
         """
 
-        print(json.dumps(batch_data, indent=2))
         for edge in batch_data:
             try:
                 node = edge["node"]

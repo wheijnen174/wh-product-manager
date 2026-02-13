@@ -25,10 +25,10 @@ class ProductParent:
         self.shopify_client = shopify_client
         self.logger = logger
 
-    async def graphql_create(self, product: UnifiedProduct) -> dict[str, Any]:
+    async def graphql_mutation__create(self, product: UnifiedProduct) -> dict[str, Any]:
         """Format product data for Shopify GraphQL product creation"""
 
-        product_graphql = product.graphql_create()
+        product_graphql = product.graphql_variable__create()
 
         mutation = mutation_create_product_parent()
         variables: dict[str, Any] = {

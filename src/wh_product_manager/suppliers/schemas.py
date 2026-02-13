@@ -6,7 +6,9 @@ Standard format for all supplier data
 import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from slugify import slugify
 
@@ -39,11 +41,53 @@ class UnifiedVariant:
             "hscode": self.hscode,
         }
 
-    def graphql_create(self) -> dict[str, Any]:
+    def graphql_variable__create(
+        self, update_time: str, location_id: str
+    ) -> dict[str, Any]:
         """Format variant data for Shopify GraphQL product creation"""
-        return {"Test": "Create"}
+        return {
+            "barcode": self.barcode,
+            "inventoryItem": {
+                "cost": self.cost,
+                "countryCodeOfOrigin": self.country_of_origin,
+                "harmonizedSystemCode": str(self.hscode)
+                if self.hscode is not None
+                else None,
+                "measurement": {
+                    "weight": {
+                        "unit": "GRAMS",
+                        "value": float(self.weight) if self.weight is not None else 0.0,
+                    },
+                },
+                "requiresShipping": True,
+                "sku": self.sku,
+                "tracked": True,
+            },
+            "inventoryPolicy": "DENY",
+            "inventoryQuantities": {
+                "locationId": location_id,
+                "name": "available",
+                "quantity": self.stock,
+            },
+            "metafields": [
+                {
+                    "namespace": "whpm",
+                    "key": "update_time",
+                    "value": update_time,
+                },
+            ],
+            "optionValues": [
+                {
+                    "optionName": "Title",
+                    "name": "Default Title",
+                }
+            ],
+            "price": self.price,
+            "sku": self.sku,
+            "taxable": True,
+        }
 
-    def graphql_update(self) -> dict[str, Any]:
+    def graphql_variable__update(self) -> dict[str, Any]:
         """Format variant data for Shopify GraphQL product update"""
         return {"Test": "Update"}
 
@@ -99,6 +143,17 @@ class UnifiedProperty:
             "values": self.values,
         }
 
+    def graphql_variable__create(self) -> dict[str, Any]:
+        """Format property data for Shopify GraphQL product creation"""
+        print(json.dumps(self.to_dict(), indent=2))
+        print("\n\n\n")
+
+        return {"Test": "Create"}
+
+    def graphql_variable__update(self) -> dict[str, Any]:
+        """Format property data for Shopify GraphQL product update"""
+        return {"Test": "Update"}
+
 
 @dataclass
 class UnifiedProduct:
@@ -126,7 +181,7 @@ class UnifiedProduct:
             "extra_data": self.extra_data,
         }
 
-    def graphql_create(self) -> dict[str, Any]:
+    def graphql_variable__create(self) -> dict[str, Any]:
         """Format product data for Shopify GraphQL product creation"""
         if self.extra_data.get("parent_sku") is None:
             raise TypeError(
@@ -207,9 +262,135 @@ class UnifiedProduct:
             },
         }
 
-    def graphql_update(self) -> dict[str, Any]:
+    def graphql_variable__update(self) -> dict[str, Any]:
         """Format product data for Shopify GraphQL product update"""
         return {"Test": "Update"}
+
+    def graphql_variable__create_set(self, location_id: str) -> dict[str, Any]:
+        """Format product data for Shopify GraphQL product creation of product set (parent + variant)"""
+        if self.extra_data.get("parent_sku") is None:
+            raise TypeError(
+                "'parent_sku' must be set to 'extra_data' for GraphQL product creation"
+            )
+
+        if self.extra_data.get("update_time") is not None:
+            update_time: str = str(self.extra_data.get("update_time"))
+        else:
+            update_time: str = datetime.now(timezone.utc).isoformat()
+
+        if self.extra_data.get("supplier_name") is None:
+            raise TypeError(
+                "'supplier_name' must be set to 'extra_data' for GraphQL product creation"
+            )
+
+        category = self.extra_data.get("shopify_category", None)
+        category = "gid://shopify/TaxonomyCategory/" + category if category else None
+
+        collections_to_join = self.extra_data.get("shopify_collections", [])
+
+        media = [
+            {
+                "alt": self.title + " - " + str(i + 1),
+                "contentType": "IMAGE",
+                "filename": slugify(self.title + " - " + str(i + 1).zfill(2))
+                + Path(urlparse(url).path).suffix,
+                "originalSource": urlparse(url).geturl(),
+            }
+            for i, url in enumerate(self.images or [])
+        ]
+
+        product_options: list[Any] = [
+            var.size_title for var in self.variants if var.size_title is not None
+        ]
+        if len(product_options) > 0 and None in product_options:
+            raise ValueError(
+                "'size_title' values must be set to all variants if there are multiple options"
+            )
+        elif len(product_options) > 0 and None not in product_options:
+            print(json.dumps(product_options, indent=2))
+            print("\n\n")
+            product_options = [
+                {
+                    "name": "Maat",
+                    "linkedMetafield": {
+                        "namespace": "product",
+                        "key": "product_size",
+                        "values": [
+                            "gid://shopify/Metaobject/494892187992",
+                            "gid://shopify/Metaobject/494892220760",
+                        ],
+                    },
+                }
+            ]
+            print(json.dumps(product_options, indent=2))
+            print("\n\n")
+            raise NotImplementedError(
+                "Product options with linked metafields are not yet implemented for product set creation"
+            )
+        else:
+            product_options = [{"name": "Title", "values": [{"name": "Default Title"}]}]
+
+        metafields: list[dict[str, Any]] = [
+            {
+                "namespace": "whpm",
+                "key": "head_article_number",
+                "value": self.extra_data.get("parent_sku"),
+            },
+            {
+                "namespace": "whpm",
+                "key": "update_time",
+                "value": update_time,
+            },
+            {
+                "namespace": "whpm",
+                "key": "number_of_sales",
+                "value": "0",
+            },
+        ]
+
+        # TODO: implement logic to convert properties to metafields/metaobjects and add them to the metafields list
+        # metafields += [
+        #     {
+        #         "namespace": name.split(".")[0],
+        #         "key": ".".join(name.split(".")[1:]),
+        #         "value": json.dumps(details.values)
+        #         if details.single_or_multi == "multi"
+        #         else details.values,
+        #     }
+        #     for name, details in (self.properties or {}).items()
+        #     if name
+        #     not in ["shopify_category", "shopify_collections", "product_options"]
+        # ]
+
+        tags = ["Nieuw"]
+
+        if (
+            self.properties is not None
+            and self.properties.get("Populariteit", "1") == "4"
+        ):
+            tags.append("Populair")
+
+        variants = [
+            var.graphql_variable__create(update_time, location_id)
+            for var in self.variants
+        ]
+
+        return {
+            "synchronous": True,
+            "productSet": {
+                "title": self.title,
+                "handle": slugify(self.title + "-" + str(self.supplier_product_id)),
+                "descriptionHtml": self.description or "",
+                "vendor": self.extra_data.get("supplier_name"),
+                "category": category,
+                "collections": collections_to_join,
+                "files": media,
+                "metafields": metafields,
+                "productOptions": product_options,
+                "tags": tags,
+                "variants": variants,
+            },
+        }
 
 
 @dataclass
