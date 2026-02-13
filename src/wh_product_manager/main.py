@@ -16,6 +16,23 @@ from wh_product_manager.services import Services
 services: Services | None = None
 
 
+def get_services() -> Services:
+    """
+    Get the global services instance
+
+    Returns:
+        Services: The initialized services container
+
+    Raises:
+        RuntimeError: If services not yet initialized
+    """
+    if services is None:
+        raise RuntimeError(
+            "Services not initialized. Application may not have started yet."
+        )
+    return services
+
+
 def create_app(app_settings: Settings) -> FastAPI:
     """
     Factory function to create and configure FastAPI application
@@ -78,8 +95,8 @@ def create_app(app_settings: Settings) -> FastAPI:
         request: Request, exc: Exception
     ) -> JSONResponse:
         """Handle all unhandled exceptions globally"""
-        if services:
-            services.logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+        svc = get_services()
+        svc.logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
 
         return JSONResponse(
             status_code=500,

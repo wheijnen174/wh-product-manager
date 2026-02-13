@@ -1,16 +1,17 @@
+"""Suppliers API routes"""
+
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from wh_product_manager.services import get_services
+from wh_product_manager.main import get_services
 
 router = APIRouter()
-
-services = get_services()
 
 
 @router.get("/products")
 async def get_all_products() -> JSONResponse:
     """Fetch raw product data from all suppliers"""
+    services = get_services()
     data = await services.supplier_service.fetch_all_data()
 
     return JSONResponse(
@@ -22,6 +23,8 @@ async def get_all_products() -> JSONResponse:
 @router.get("/{supplier_name}/products")
 async def get_supplier_products(supplier_name: str) -> JSONResponse:
     """Fetch raw product data from the specified supplier"""
+    services = get_services()
+
     try:
         supplier = await services.supplier_service.get_supplier(supplier_name.lower())
     except ValueError as e:
@@ -41,6 +44,8 @@ async def get_supplier_products(supplier_name: str) -> JSONResponse:
 @router.get("/{supplier_name}/products/raw")
 async def get_supplier_products_raw(supplier_name: str) -> JSONResponse:
     """Fetch raw product data from the specified supplier"""
+    services = get_services()
+
     try:
         supplier = await services.supplier_service.get_supplier(supplier_name.lower())
     except ValueError as e:
