@@ -1,5 +1,3 @@
-"""Suppliers API routes"""
-
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
@@ -7,10 +5,12 @@ router = APIRouter()
 
 
 def _get_services():
-    """Helper to get services (imports locally to avoid circular imports)"""
-    from wh_product_manager.main import get_services
+    """Helper to get services from main module"""
+    from wh_product_manager import main
 
-    return get_services()
+    if main.services is None:
+        raise RuntimeError("Services not initialized")
+    return main.services
 
 
 @router.get("/products")
