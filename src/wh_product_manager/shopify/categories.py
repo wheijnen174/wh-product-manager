@@ -4,7 +4,7 @@ from typing import Any
 from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
-from wh_product_manager.shopify.publishing import Publications
+from wh_product_manager.shopify.publishing import PublicationService
 from wh_product_manager.suppliers.schemas import UnifiedProduct
 from wh_product_manager.utils.data_loader import load_json, save_json
 
@@ -15,13 +15,13 @@ class Categories:
         shopify_client: ShopifyGraphQLClient,
         settings: Settings,
         logger: Logger,
-        publications: Publications,
+        publication_service: PublicationService,
         products: dict[str, UnifiedProduct],
     ):
         self.shopify_client = shopify_client
         self.settings = settings
         self.logger = logger
-        self.publications = publications
+        self.publication_service = publication_service
         self.products = products
 
     async def get_product_categories(self) -> dict[str, Any]:
@@ -88,7 +88,7 @@ class Categories:
                 f"Created {len(new_categories)} new categories, now publishing all new categories"
             )
 
-            await self.publications.publish_shopify_objects(
+            await self.publication_service.publish_shopify_objects(
                 object_ids=publish_object_ids,
                 shopify_client=self.shopify_client,
                 logger=self.logger,

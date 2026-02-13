@@ -13,7 +13,7 @@ from wh_product_manager.shopify.client import ShopifyGraphQLClient
 from wh_product_manager.shopify.inventory import InventoryService
 from wh_product_manager.shopify.products.parent import ProductParent
 from wh_product_manager.shopify.products.variant import ProductVariant
-from wh_product_manager.shopify.publishing import Publications
+from wh_product_manager.shopify.publishing import PublicationService
 from wh_product_manager.suppliers.base import BaseSupplier
 from wh_product_manager.suppliers.schemas import UnifiedProduct
 from wh_product_manager.suppliers.service import SupplierService
@@ -30,7 +30,7 @@ class ProductService:
         shopify_client: ShopifyGraphQLClient,
         settings: Settings,
         logger: Logger,
-        publications: Publications,
+        publication_service: PublicationService,
         inventory_service: InventoryService,
         supplier_service: SupplierService,
     ):
@@ -41,14 +41,14 @@ class ProductService:
             shopify_client: ShopifyGraphQLClient instance
             settings: Application settings
             logger: Logger instance
-            publications: Publications manager instance
+            publication_service: PublicationService instance
             inventory_service: InventoryService instance
             supplier_service: SupplierService instance
         """
         self.shopify_client = shopify_client
         self.settings = settings
         self.logger = logger
-        self.publications = publications
+        self.publication_service = publication_service
 
         self.inventory_service = inventory_service
         self.supplier_service = supplier_service
@@ -80,7 +80,7 @@ class ProductService:
             self.shopify_client,
             self.settings,
             self.logger,
-            self.publications,
+            self.publication_service,
             new_products,
         )
 
