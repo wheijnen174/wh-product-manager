@@ -15,11 +15,13 @@ def get_assets_dir() -> Path:
     Get the assets directory path
     Works for both development and compiled EXE
     """
-    if getattr(sys, "frozen", False):
+    file_ext = Path(sys.argv[0]).suffix
+
+    if getattr(sys, "frozen", False) or file_ext in {".exe", ".app"}:
         # Running as compiled EXE
         # EXE is in: dist/WH-Product-Manager.exe
         # Data is in: dist/assets/
-        exe_dir = Path(sys.executable).parent
+        exe_dir = Path(sys.argv[0]).parent
         data_dir = exe_dir / "assets"
     else:
         # Running as Python script

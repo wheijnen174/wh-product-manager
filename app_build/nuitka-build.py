@@ -18,7 +18,7 @@ def build():
     VERSION = "1.0.0"
     EXE_NAME = "WH-Product-Manager"
 
-    root_dir = Path(__file__).parent
+    root_dir = Path(__file__).parent.parent
     main_file = root_dir / "src" / "wh_product_manager" / "main_build.py"
     icon_file = root_dir / "assets" / "icon.ico"
     output_dir = root_dir / "dist"
