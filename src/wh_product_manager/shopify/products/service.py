@@ -8,10 +8,11 @@ from typing import Any
 
 from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
-from wh_product_manager.shopify.categories import Categories
+from wh_product_manager.shopify.categories import CategoriesService
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
 from wh_product_manager.shopify.helpers.stock_location import StockLocation
 from wh_product_manager.shopify.inventory import InventoryService
+from wh_product_manager.shopify.product_properties import ProductPropertiesService
 from wh_product_manager.shopify.products.product_parent import ProductParent
 from wh_product_manager.shopify.products.product_set import ProductSet
 from wh_product_manager.shopify.products.product_variant import ProductVariant
@@ -35,6 +36,8 @@ class ProductService:
         publication_service: PublicationService,
         inventory_service: InventoryService,
         supplier_service: SupplierService,
+        categories_service: CategoriesService,
+        product_properties_service: ProductPropertiesService,
     ):
         """
         Initialize product service
@@ -54,6 +57,8 @@ class ProductService:
 
         self.inventory_service = inventory_service
         self.supplier_service = supplier_service
+        self.categories_service = categories_service
+        self.product_properties_service = product_properties_service
 
         # Initialize sub-managers
         self.product_parent = ProductParent(shopify_client, logger)
@@ -83,60 +88,59 @@ class ProductService:
         update_time = datetime.now(timezone.utc).isoformat()
 
         # Prepare and fetch categories. Create any new categories if needed
-        categories_manager = Categories(
-            self.shopify_client,
-            self.settings,
-            self.logger,
-            self.publication_service,
-            new_products,
+        categories = await self.categories_service.get_product_categories(new_products)
+
+        # Prepare and fetch product properties and put data in their place for each product
+        new_products = await self.product_properties_service.process_properties(
+            new_products
         )
 
-        categories = await categories_manager.get_product_categories()  # type: ignore  # noqa: F841
-
-        # Prepare and fetch metafield/metaobject definitions and values. Create any new definitions/values if needed
+        raise NotImplementedError(
+            "Debugging for product properties in progress. Remove this after finishing the implementation."
+        )
 
         responses: list[dict[str, Any]] = []
 
         for parent_sku, product in new_products.items():
-            # try:
-            self.logger.debug(f"Creating product: '{parent_sku} - {product.title}'")
+            try:
+                self.logger.debug(f"Creating product: '{parent_sku} - {product.title}'")
 
-            necessary_categories = [
-                " > ".join(str(product.category).split(" > ")[: i + 1])
-                for i in range(len(str(product.category).split(" > ")))
-            ]
+                necessary_categories = [
+                    " > ".join(str(product.category).split(" > ")[: i + 1])
+                    for i in range(len(str(product.category).split(" > ")))
+                ]
 
-            if not all(cat in categories for cat in necessary_categories):
-                self.logger.warning(
-                    f"Skipping product '{parent_sku}' - '{product.title}' due to missing categories: {necessary_categories}"
+                if not all(cat in categories for cat in necessary_categories):
+                    self.logger.warning(
+                        f"Skipping product '{parent_sku}' - '{product.title}' due to missing categories: {necessary_categories}"
+                    )
+                    continue  # Skip product creation if any category is missing
+
+                product.extra_data["parent_sku"] = parent_sku
+                product.extra_data["update_time"] = update_time
+                product.extra_data["supplier_name"] = supplier.name
+
+                product.extra_data["shopify_category"] = categories.get(
+                    str(product.category), {}
+                ).get("shopify_category")
+
+                product.extra_data["shopify_collections"] = [
+                    categories.get(str(cat), {}).get("collection_id")
+                    for cat in necessary_categories
+                ]
+
+                response = await self.product_set.graphql_mutation__create(
+                    product, location_id
                 )
-                continue  # Skip product creation if any category is missing
 
-            product.extra_data["parent_sku"] = parent_sku
-            product.extra_data["update_time"] = update_time
-            product.extra_data["supplier_name"] = supplier.name
+                responses.append(response)
 
-            product.extra_data["shopify_category"] = categories.get(
-                str(product.category), {}
-            ).get("shopify_category")
+            except Exception as e:
+                self.logger.error(
+                    f"Error creating product '{parent_sku} - {product.title}': {str(e)}"
+                )
 
-            product.extra_data["shopify_collections"] = [
-                categories.get(str(cat), {}).get("collection_id")
-                for cat in necessary_categories
-            ]
-
-            response = await self.product_set.graphql_mutation__create(
-                product, location_id
-            )
-
-            responses.append(response)
-
-            # except Exception as e:
-            #     self.logger.error(
-            #         f"Error creating product '{parent_sku} - {product.title}': {str(e)}"
-            #     )
-
-            # break  # Remove this break after finishing the actual creation logic
+            break  # Remove this break after finishing the actual creation logic
 
         product_ids_to_publish: list[str] = []
         for item in responses:

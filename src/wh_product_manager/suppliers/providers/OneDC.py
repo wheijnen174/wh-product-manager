@@ -99,7 +99,7 @@ class Supplier_OneDC(BaseSupplier):
 
         conversion_map = CountrynameConversion.map_name_to_iso(self.logger)
 
-        self.logger.info("Supplier_OneDC - Transforming data...")
+        self.logger.info(f"{self.name} - Transforming data...")
         unified_products: dict[str, UnifiedProduct] = {}
 
         for product in raw_data.get("products", {}).get("product", []):
@@ -113,11 +113,11 @@ class Supplier_OneDC(BaseSupplier):
                     country_name: str = product.get("country_of_origin")
                     if string_needs_normalization(country_name):
                         self.logger.debug(
-                            f"Supplier_OneDC - Country name '{country_name}' needs normalization"
+                            f"{self.name} - Country name '{country_name}' needs normalization"
                         )
                         country_name = normalize_string(country_name)
                         self.logger.debug(
-                            f"Supplier_OneDC - Normalized country name: '{country_name}'"
+                            f"{self.name} - Normalized country name: '{country_name}'"
                         )
 
                     country_of_origin = conversion_map.get(country_name.lower())
@@ -133,7 +133,7 @@ class Supplier_OneDC(BaseSupplier):
                     and product.get("country_of_origin") is not None
                 ):
                     self.logger.warning(
-                        f"Supplier_OneDC - Country of origin '{product.get('country_of_origin')}' not found in conversion map"
+                        f"{self.name} - Country of origin '{product.get('country_of_origin')}' not found in conversion map"
                     )
 
                 hscode = int(product.get("hscode")) if product.get("hscode") else None
@@ -197,13 +197,11 @@ class Supplier_OneDC(BaseSupplier):
 
             except Exception as e:
                 self.logger.error(
-                    f"Supplier_OneDC - Transformation failed for product '{product.get('head_article_number')}': {str(e)}"
+                    f"{self.name} - Transformation failed for product '{product.get('head_article_number')}': {str(e)}"
                 )
                 raise
 
-        self.logger.info(
-            f"Supplier_OneDC - Transformed {len(unified_products)} products"
-        )
+        self.logger.info(f"{self.name} - Transformed {len(unified_products)} products")
         return unified_products
 
     def transform_product_properties(
@@ -383,6 +381,13 @@ class Supplier_OneDC(BaseSupplier):
                     else:
                         property_values = str(regex(property_values, "str"))
 
+                    if property_title == "Geschikt voor koppels":
+                        property_values = (
+                            [val.replace("Koppels: ", "") for val in property_values]
+                            if isinstance(property_values, list)
+                            else property_values.replace("Koppels: ", "")
+                        )
+
                     # Only add property if it has values (not empty string or empty list)
                     if property_values != "" and property_values != [""]:
                         product_properties[property_title] = UnifiedProperty(
@@ -395,6 +400,5 @@ class Supplier_OneDC(BaseSupplier):
                     self.logger.error(
                         f"Supplier_OneDC - Failed to transform property '{raw_property.get('title')}' for product '{product.get('head_article_number')}': {str(e)}"
                     )
-                    raise
 
         return product_properties

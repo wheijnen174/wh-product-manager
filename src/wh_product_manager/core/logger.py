@@ -72,7 +72,7 @@ class Logger:
 
         # Colored formatter for console
         formatter = _ColoredFormatter(
-            fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            fmt="%(levelname)s %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
         console_handler.setFormatter(formatter)
@@ -124,7 +124,7 @@ class Logger:
             message: Error message
             exc_info: Include exception traceback
         """
-        self.logger.error(message, *args, exc_info=exc_info, **kwargs)
+        self.logger.error(message, *args, exc_info=False, **kwargs)
 
     def critical(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log a critical message"""
@@ -172,7 +172,7 @@ class _ColoredFormatter(logging.Formatter):
         if levelname in self._COLORS:
             color = self._COLORS[levelname]
             reset = self._COLORS["RESET"]
-            record.levelname = f"{color}{levelname}{reset}"
+            record.levelname = f"{color}{levelname}{reset}:{' ' * (8 - len(levelname))}"  # Pad to 10 characters for alignment
 
         # Format the message
         result = super().format(record)

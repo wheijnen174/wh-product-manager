@@ -28,10 +28,10 @@ class StockLocation:
             shopify_client: ShopifyGraphQLClient instance
             logger: Logger instance
         Returns:
-            str: Location ID from Shopify
+            str: Stock location ID from Shopify
 
         Raises:
-            ValueError: If no locations found in Shopify
+            ValueError: If no stock locations found in Shopify
         """
 
         query = """
@@ -55,20 +55,20 @@ class StockLocation:
             locations = response.get("data", {}).get("locations", {}).get("edges", [])
 
             if not locations:
-                logger.error(f"No locations found for '{location_name}'.")
-                raise ValueError(f"No locations found for '{location_name}'.")
+                logger.error(f"No stock locations found for '{location_name}'.")
+                raise ValueError(f"No stock locations found for '{location_name}'.")
 
             if len(locations) > 1:
                 logger.warning(
-                    f"Multiple locations found for '{location_name}'. Using the first one."
+                    f"Multiple stock locations found for '{location_name}'. Using the first one."
                 )
 
             location_id = locations[0]["node"]["id"]
             location_name = locations[0]["node"]["name"]
 
-            logger.info(f"Using location: {location_name}")
+            logger.info(f"Using stock location: {location_name}")
             return location_id
 
         except Exception as e:
-            logger.error(f"Failed to retrieve location ID: {str(e)}")
+            logger.error(f"Failed to retrieve stock location ID: {str(e)}")
             raise

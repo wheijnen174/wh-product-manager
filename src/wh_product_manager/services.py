@@ -5,8 +5,12 @@ Initializes and manages all services
 
 from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
+from wh_product_manager.shopify.categories import CategoriesService
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
 from wh_product_manager.shopify.inventory import InventoryService
+from wh_product_manager.shopify.metafields import MetafieldService
+from wh_product_manager.shopify.metaobjects import MetaobjectService
+from wh_product_manager.shopify.product_properties import ProductPropertiesService
 from wh_product_manager.shopify.products import ProductService
 from wh_product_manager.shopify.publishing import PublicationService
 from wh_product_manager.suppliers.service import SupplierService
@@ -32,7 +36,7 @@ class Services:
 
         self.publication_service = PublicationService(self.shopify_client, self.logger)
 
-        self.shopify_inventory = InventoryService(
+        self.inventory_service = InventoryService(
             self.shopify_client, self.settings, self.logger
         )
 
@@ -40,13 +44,35 @@ class Services:
             self.shopify_client, settings, self.logger
         )
 
-        self.product_service = ProductService(
+        self.categories_service = CategoriesService(
+            self.shopify_client, settings, self.logger, self.publication_service
+        )
+
+        self.metafield_service = MetafieldService(
+            self.shopify_client, settings, self.logger
+        )
+
+        self.metaobject_service = MetaobjectService(
+            self.shopify_client, settings, self.logger
+        )
+
+        self.product_properties_service = ProductPropertiesService(
             self.shopify_client,
             settings,
             self.logger,
+            self.metafield_service,
+            self.metaobject_service,
+        )
+
+        self.product_service = ProductService(
+            self.shopify_client,
+            self.settings,
+            self.logger,
             self.publication_service,
-            self.shopify_inventory,
+            self.inventory_service,
             self.supplier_service,
+            self.categories_service,
+            self.product_properties_service,
         )
 
         self.logger.info("Services Container initialized with all services")

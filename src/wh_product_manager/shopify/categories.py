@@ -9,31 +9,29 @@ from wh_product_manager.suppliers.schemas import UnifiedProduct
 from wh_product_manager.utils.data_loader import load_json, save_json
 
 
-class Categories:
+class CategoriesService:
     def __init__(
         self,
         shopify_client: ShopifyGraphQLClient,
         settings: Settings,
         logger: Logger,
         publication_service: PublicationService,
-        products: dict[str, UnifiedProduct],
     ):
         self.shopify_client = shopify_client
         self.settings = settings
         self.logger = logger
         self.publication_service = publication_service
-        self.products = products
 
-    async def get_product_categories(self) -> dict[str, Any]:
+    async def get_product_categories(
+        self, products: dict[str, UnifiedProduct]
+    ) -> dict[str, Any]:
         categories = await self._load_categories_file()
 
         existing_categories = await self._existing_categories(
             self.shopify_client, self.settings, self.logger
         )
 
-        necessary_categories = await self._necessary_categories(
-            self.products, self.logger
-        )
+        necessary_categories = await self._necessary_categories(products, self.logger)
 
         # Update categories file with data from Shopify categories (update missing ID's and handles)
         for breadcrumbs, details in existing_categories.items():
@@ -90,8 +88,6 @@ class Categories:
 
             await self.publication_service.publish_shopify_objects(
                 object_ids=publish_object_ids,
-                shopify_client=self.shopify_client,
-                logger=self.logger,
             )
 
             self.logger.info(f"Published {len(publish_object_ids)} new categories")

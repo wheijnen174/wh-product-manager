@@ -54,7 +54,6 @@ def create_app(app_settings: Settings) -> FastAPI:
 
         # Startup - create Services with passed settings
         services = Services(app_settings)
-        services.logger.info("Application startup complete")
 
         yield
 
