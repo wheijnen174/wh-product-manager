@@ -35,7 +35,7 @@ async def shopify_inventory(
             )
 
     async with product_operation_lock:
-        inventory_data = await services.shopify_inventory.get_current_inventory(
+        inventory_data = await services.inventory_service.get_current_inventory(
             supplier=supplier, return_ids=return_ids
         )
 

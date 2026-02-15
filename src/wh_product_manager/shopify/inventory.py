@@ -112,9 +112,7 @@ class InventoryService:
                     self.settings.SHOPIFY_API_BATCH_DELAY
                 )  # Rate limiting delay
 
-            self.logger.info(
-                f"Processed inventory: {len(current_inventory)} parent SKUs"
-            )
+            self.logger.info(f"Processed inventory: {len(current_inventory)} products")
             return current_inventory
 
         except Exception as e:

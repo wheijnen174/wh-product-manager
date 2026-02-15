@@ -3,6 +3,7 @@ Shopify product set (parent + variant) operations
 Manages creation, updating, and deletion of product sets
 """
 
+import json
 from typing import Any
 
 from wh_product_manager.core.logger import Logger
@@ -39,6 +40,15 @@ class ProductSet:
         }
 
         response = await self.shopify_client.query(mutation, variables)
+
+        response_product = (
+            response.get("data", {}).get("productSet", {}).get("product", {})
+        )
+
+        if response_product is None:
+            raise Exception(
+                f"Failed to create product set for product '{product.title}'. User errors: {json.dumps(response.get('data', {}).get('productSet', {}).get('userErrors', []), indent=2)}"
+            )
 
         product_id = (
             response.get("data", {}).get("productSet", {}).get("product", {}).get("id")

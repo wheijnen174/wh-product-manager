@@ -1,3 +1,4 @@
+from asyncio import sleep
 from typing import Any
 
 from wh_product_manager.config import Settings
@@ -16,65 +17,47 @@ class MetafieldService:
         self.settings = settings
         self.logger = logger
 
-    async def get_definitions(self) -> dict[str, Any]:
+    async def get_definitions(self, owner_type: str) -> dict[str, Any]:
+        query = self._query_get_definitions()
 
-        return {}
+        cursor = None
 
-        # query = self._query_get_definitions()
+        existing_definitions: dict[str, Any] = {}
 
-        # cursor = None
+        while True:
+            variables: dict[str, Any] = {
+                "ownerType": owner_type,
+                "cursor": cursor,
+            }
 
-        # existing_definitions: dict[str, Any] = {}
+            response = await self.shopify_client.query(query, variables)
 
-        # while True:
-        #     variables: dict[str, Any] = {
-        #         "cursor": cursor,
-        #     }
+            data = response.get("data", {}).get("metafieldDefinitions", {})
 
-        #     response = await self.shopify_client.query(query, variables)
+            batch_data = data.get("edges", [])
 
-        #     data = response.get("data", {}).get("metafieldDefinitions", {})
+            for item in batch_data:
+                node = item.get("node", {})
 
-        #     batch_data = data.get("edges", [])
+                object_id = node.get("id")
+                object_namespace = node.get("namespace")
+                object_key = node.get("key")
+                object_name = node.get("name")
 
-        #     for item in batch_data:
-        #         node = item.get("node", {})
+                existing_definitions[object_name] = {
+                    "id": object_id,
+                    "namespace": object_namespace,
+                    "key": object_key,
+                }
 
-        #         object_id = node.get("id")
-        #         object_name = node.get("name")
-        #         object_type = node.get("type")
-        #         object_values: dict[str, list[str]] = {}
+            if not data["pageInfo"]["hasNextPage"]:
+                break
 
-        #         for value in node.get("metafields", {}).get("nodes", []):
-        #             for field in value.get("fields", []):
-        #                 key = field.get("key")
-        #                 value = field.get("value")
+            cursor = data["pageInfo"]["endCursor"]
 
-        #                 if key not in object_values:
-        #                     object_values[key] = []
+            await sleep(self.settings.SHOPIFY_API_BATCH_DELAY)  # Rate limiting delay
 
-        #                 object_values[key].append(value)
-
-        #         existing_definitions[object_name] = {
-        #             "id": object_id,
-        #             "type": object_type,
-        #             "has_more_values": node["metafields"]["pageInfo"]["hasNextPage"],
-        #             "values": object_values,
-        #         }
-
-        #     if not data["pageInfo"]["hasNextPage"]:
-        #         break
-
-        #     cursor = data["pageInfo"]["endCursor"]
-
-        #     await sleep(self.settings.SHOPIFY_API_BATCH_DELAY)  # Rate limiting delay
-
-        # save_json("_debug_metafield_definitions.json", existing_definitions, True, True)
-
-        # return dict(sorted(existing_definitions.items()))
-
-    async def _get_values(self) -> dict[str, Any]:
-        return {}
+        return dict(sorted(existing_definitions.items()))
 
     @staticmethod
     def _query_get_definitions(query_name: str | None = None) -> str:
@@ -82,6 +65,7 @@ class MetafieldService:
         GraphQL query for fetching metafield definitions from Shopify
 
         Query args:
+            ownerType: The type of Shopify object the metafields are associated with (e.g., PRODUCT, VARIANT, etc.)
             cursor: Pagination cursor for batching through results
 
         Args:
@@ -91,25 +75,14 @@ class MetafieldService:
         """
 
         return f"""
-            query {query_name if query_name else ""}($cursor: String) {{
-                metafieldDefinitions(first: 250, after: $cursor) {{
+            query {query_name if query_name else ""}($ownerType: MetafieldOwnerType!, $cursor: String) {{
+                metafieldDefinitions(ownerType: $ownerType, first: 250, after: $cursor) {{
                     edges {{
                         node {{
                             id
-                            type
-                            name
-                            metafields(first: 250) {{
-                                nodes {{
-                                    fields {{
-                                        key
-                                        value
-                                    }}
-                                }}
-                                pageInfo {{
-                                    hasNextPage
-                                    endCursor
-                                }}
-                            }}
+                            namespace
+                          	key
+                          	name
                         }}
                     }}
                     pageInfo {{

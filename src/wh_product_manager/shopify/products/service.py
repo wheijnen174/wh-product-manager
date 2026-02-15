@@ -95,10 +95,6 @@ class ProductService:
             new_products
         )
 
-        raise NotImplementedError(
-            "Debugging for product properties in progress. Remove this after finishing the implementation."
-        )
-
         responses: list[dict[str, Any]] = []
 
         for parent_sku, product in new_products.items():
@@ -111,8 +107,11 @@ class ProductService:
                 ]
 
                 if not all(cat in categories for cat in necessary_categories):
+                    missing_categories = [
+                        cat for cat in necessary_categories if cat not in categories
+                    ]
                     self.logger.warning(
-                        f"Skipping product '{parent_sku}' - '{product.title}' due to missing categories: {necessary_categories}"
+                        f"Skipping product '{parent_sku}' - '{product.title}' due to missing categories: {missing_categories}"
                     )
                     continue  # Skip product creation if any category is missing
 

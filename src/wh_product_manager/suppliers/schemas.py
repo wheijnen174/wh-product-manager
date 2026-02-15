@@ -349,18 +349,22 @@ class UnifiedProduct:
         ]
 
         # TODO: implement logic to convert properties to metafields/metaobjects and add them to the metafields list
-        # metafields += [
-        #     {
-        #         "namespace": name.split(".")[0],
-        #         "key": ".".join(name.split(".")[1:]),
-        #         "value": json.dumps(details.values)
-        #         if details.single_or_multi == "multi"
-        #         else details.values,
-        #     }
-        #     for name, details in (self.properties or {}).items()
-        #     if name
-        #     not in ["shopify_category", "shopify_collections", "product_options"]
-        # ]
+        processed_properties: dict[str, Any] = self.extra_data.get(
+            "processed_properties", {}
+        )
+        metafields += [
+            {
+                "namespace": name.split(".")[0],
+                "key": ".".join(name.split(".")[1:]),
+                "value": json.dumps(values) if isinstance(values, list) else values,
+            }
+            for name, values in processed_properties.items()
+        ]
+
+        print(json.dumps(metafields, indent=2))
+        # raise NotImplementedError(
+        #     "Conversion of product properties to metafields/metaobjects is not yet implemented for product set creation"
+        # )
 
         tags = ["Nieuw"]
 

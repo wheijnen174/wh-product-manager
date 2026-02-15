@@ -93,7 +93,7 @@ class CategoriesService:
             self.logger.info(f"Published {len(publish_object_ids)} new categories")
 
         else:
-            self.logger.info("No new categories to create")
+            self.logger.debug("No new categories to create")
 
         # Save the updated categories file with new categories and updated details from Shopify
         await self._save_categories_file(categories)

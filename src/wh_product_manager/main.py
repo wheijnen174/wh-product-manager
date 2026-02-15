@@ -81,8 +81,7 @@ def create_app(app_settings: Settings) -> FastAPI:
             allow_headers=["*"],
         )
 
-    # ✅ MOVED: Import routes AFTER get_services is defined
-    # This prevents circular import issues
+    # API routes
     from wh_product_manager.api.routes import health, products, suppliers
 
     app.include_router(health.router, prefix="/api/v1/health")

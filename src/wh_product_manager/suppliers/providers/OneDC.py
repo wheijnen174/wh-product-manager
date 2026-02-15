@@ -99,7 +99,6 @@ class Supplier_OneDC(BaseSupplier):
 
         conversion_map = CountrynameConversion.map_name_to_iso(self.logger)
 
-        self.logger.info(f"{self.name} - Transforming data...")
         unified_products: dict[str, UnifiedProduct] = {}
 
         for product in raw_data.get("products", {}).get("product", []):
@@ -201,7 +200,6 @@ class Supplier_OneDC(BaseSupplier):
                 )
                 raise
 
-        self.logger.info(f"{self.name} - Transformed {len(unified_products)} products")
         return unified_products
 
     def transform_product_properties(
