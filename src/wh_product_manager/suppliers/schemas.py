@@ -45,6 +45,21 @@ class UnifiedVariant:
         self, update_time: str, location_id: str
     ) -> dict[str, Any]:
         """Format variant data for Shopify GraphQL product creation"""
+        if self.size_title is not None:
+            option_values = [
+                {
+                    "optionName": "Maat",
+                    "linkedMetafieldValue": self.size_title,
+                }
+            ]
+        else:
+            option_values = [
+                {
+                    "optionName": "Title",
+                    "name": "Default Title",
+                }
+            ]
+
         return {
             "barcode": self.barcode,
             "inventoryItem": {
@@ -76,12 +91,7 @@ class UnifiedVariant:
                     "value": update_time,
                 },
             ],
-            "optionValues": [
-                {
-                    "optionName": "Title",
-                    "name": "Default Title",
-                }
-            ],
+            "optionValues": option_values,
             "price": self.price,
             "sku": self.sku,
             "taxable": True,
@@ -307,26 +317,16 @@ class UnifiedProduct:
                 "'size_title' values must be set to all variants if there are multiple options"
             )
         elif len(product_options) > 0 and None not in product_options:
-            print(json.dumps(product_options, indent=2))
-            print("\n\n")
             product_options = [
                 {
                     "name": "Maat",
                     "linkedMetafield": {
                         "namespace": "product",
-                        "key": "product_size",
-                        "values": [
-                            "gid://shopify/Metaobject/494892187992",
-                            "gid://shopify/Metaobject/494892220760",
-                        ],
+                        "key": "maat",
+                        "values": product_options,
                     },
                 }
             ]
-            print(json.dumps(product_options, indent=2))
-            print("\n\n")
-            raise NotImplementedError(
-                "Product options with linked metafields are not yet implemented for product set creation"
-            )
         else:
             product_options = [{"name": "Title", "values": [{"name": "Default Title"}]}]
 
@@ -348,7 +348,7 @@ class UnifiedProduct:
             },
         ]
 
-        # TODO: implement logic to convert properties to metafields/metaobjects and add them to the metafields list
+        # Process properties into metafields/metaobjects based on their configuration
         processed_properties: dict[str, Any] = self.extra_data.get(
             "processed_properties", {}
         )
@@ -360,11 +360,6 @@ class UnifiedProduct:
             }
             for name, values in processed_properties.items()
         ]
-
-        print(json.dumps(metafields, indent=2))
-        # raise NotImplementedError(
-        #     "Conversion of product properties to metafields/metaobjects is not yet implemented for product set creation"
-        # )
 
         tags = ["Nieuw"]
 

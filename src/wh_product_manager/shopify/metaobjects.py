@@ -139,11 +139,8 @@ class MetaobjectService:
         object_type = data.get("type")
 
         if not object_id or not object_type:
-            self.logger.error(
-                f"Metaobject definition creation response missing expected fields: {response}"
-            )
             raise Exception(
-                "Metaobject definition creation succeeded, but missing fields ('id' or 'type') in response"
+                f"Metaobject definition creation succeeded, but missing fields ('id' or 'type') in response: {response}"
             )
 
         return {

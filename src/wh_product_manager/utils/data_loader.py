@@ -39,7 +39,7 @@ def get_assets_dir() -> Path:
     return data_dir
 
 
-def load_json(filename: str) -> dict[Any, Any]:
+def load_json(filename: str) -> dict[Any, Any] | list[Any]:
     """Load a JSON file from the assets directory"""
     data_dir = get_assets_dir()
     filepath = data_dir / filename
@@ -53,7 +53,7 @@ def load_json(filename: str) -> dict[Any, Any]:
 
 def save_json(
     filename: str,
-    data: dict[Any, Any],
+    data: dict[Any, Any] | list[Any],
     sort_on_keys: bool = False,
     indent: bool = False,
 ) -> None:
@@ -61,7 +61,7 @@ def save_json(
     data_dir = get_assets_dir()
     filepath = data_dir / filename
 
-    if sort_on_keys:
+    if sort_on_keys and isinstance(data, dict):
         data = dict(sorted(data.items()))
 
     with open(filepath, "w+", encoding="utf-8") as f:

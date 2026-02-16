@@ -249,7 +249,9 @@ class CategoriesService:
 
     async def _load_categories_file(self) -> dict[str, dict[str, str | int | None]]:
         data = load_json("collections.json")
-        return data
+        if isinstance(data, dict):
+            return data
+        return {}
 
     async def _save_categories_file(
         self, data: dict[str, dict[str, str | int | None]]
@@ -257,6 +259,48 @@ class CategoriesService:
         save_json(
             filename="collections.json", data=data, sort_on_keys=True, indent=False
         )
+
+    async def get_category_constraints(self, product_type: str) -> list[str]:
+        """
+        Fetches the category constraints for product metafields from Shopify.
+
+        This method retrieves the metafield definitions for products and extracts any category constraints defined in the metafield definition's description or a specific field. The constraints are expected to be in a specific format (e.g., JSON or a delimited string) that can be parsed to determine which categories are allowed for certain metafields.
+
+        Args:
+            product_type: The type of category constraints to fetch. Only "product" or "event" types are valid.
+        Returns:
+            list[str]: A list of category constraints for product metafields.
+        """
+        if product_type == "product":
+            taxonomies = await self.get_shopify_category_taxonomies()
+
+            taxonomies.remove("ae-1")  # Remove event category from product constraints
+
+            return taxonomies
+
+        elif product_type == "event":
+            return ["ae-1"]
+
+        else:
+            raise ValueError(
+                f"Invalid category constraint type: {product_type}. Must be 'product' or 'event'."
+            )
+
+    @staticmethod
+    async def get_shopify_category_taxonomies() -> list[str]:
+        try:
+            data = load_json("shopify_category_taxonomies.json")
+        except FileNotFoundError:
+            raise Exception(
+                "Shopify category taxonomies file not found. Make sure the file 'shopify_category_taxonomies.json' exists and contains the necessary taxonomies in list format."
+            )
+
+        if isinstance(data, list):
+            return data
+        else:
+            raise Exception(
+                "Shopify category taxonomies file is not in the expected format (list of strings). Check the file content for file 'shopify_category_taxonomies.json'"
+            )
 
     @staticmethod
     def _mutation_create_category(mutation_name: str | None = None) -> str:

@@ -90,9 +90,18 @@ class ProductService:
         # Prepare and fetch categories. Create any new categories if needed
         categories = await self.categories_service.get_product_categories(new_products)
 
+        # Prepare and fetch taxonomies
+        category_constraints = await self.categories_service.get_category_constraints(
+            product_type="product"
+        )
+
         # Prepare and fetch product properties and put data in their place for each product
         new_products = await self.product_properties_service.process_properties(
-            new_products
+            new_products, category_constraints
+        )
+
+        self.logger.info(
+            f"Creating {len(new_products)} new products for supplier: {supplier.name}"
         )
 
         responses: list[dict[str, Any]] = []
@@ -139,7 +148,10 @@ class ProductService:
                     f"Error creating product '{parent_sku} - {product.title}': {str(e)}"
                 )
 
-            break  # Remove this break after finishing the actual creation logic
+            if len(responses) >= 50:
+                break
+
+        self.logger.info("Finished creating products")
 
         product_ids_to_publish: list[str] = []
         for item in responses:
@@ -149,6 +161,8 @@ class ProductService:
                     product_ids_to_publish.append(product_id)
 
         await self.publication_service.publish_shopify_objects(product_ids_to_publish)
+
+        self.logger.info("Published new products")
 
         return {
             "found": len(inventory),

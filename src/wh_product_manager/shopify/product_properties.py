@@ -8,7 +8,6 @@ from wh_product_manager.shopify.client import ShopifyGraphQLClient
 from wh_product_manager.shopify.metafields import MetafieldService
 from wh_product_manager.shopify.metaobjects import MetaobjectService
 from wh_product_manager.suppliers.schemas import UnifiedProduct
-from wh_product_manager.utils.data_loader import save_json
 
 
 class ProductPropertiesService:
@@ -27,7 +26,7 @@ class ProductPropertiesService:
         self.metaobject_service = metaobject_service
 
     async def process_properties(
-        self, products: dict[str, UnifiedProduct]
+        self, products: dict[str, UnifiedProduct], category_constraints: list[str]
     ) -> dict[str, UnifiedProduct]:
         self.logger.info("Start processing product properties")
 
@@ -36,22 +35,12 @@ class ProductPropertiesService:
         all_properties = await self._get_all_properties(products, namespace)
 
         all_properties = await self._prepare_property_definitions(
-            all_properties, namespace
+            all_properties, namespace, category_constraints
         )
 
         all_properties = await self._prepare_property_values(all_properties)
 
         products = await self._assign_properties_to_products(products, all_properties)
-
-        save_json("_debug_properties.json", all_properties, True, True)
-        save_json(
-            "_debug_products.json",
-            {parent_sku: product.to_dict() for parent_sku, product in products.items()},
-            indent=True,
-        )
-        # raise NotImplementedError(
-        #     "This method is not fully implemented yet. It currently only processes the 'Maat' property and does not handle other properties or metafields."
-        # )
 
         self.logger.info("Finished processing product properties")
 
@@ -171,7 +160,10 @@ class ProductPropertiesService:
         return all_properties
 
     async def _prepare_property_definitions(
-        self, all_properties: dict[str, dict[str, Any]], namespace: str
+        self,
+        all_properties: dict[str, dict[str, Any]],
+        namespace: str,
+        category_constraints: list[str],
     ) -> dict[str, dict[str, Any]]:
         self.logger.debug("Preparing property definitions")
 
@@ -191,21 +183,12 @@ class ProductPropertiesService:
             for key, value in metaobject_definitions.items()
             if value["type"].split("-")[0] == slugify(namespace, separator="_")
         }
-        save_json(
-            "_debug_metaobject_definitions.json", metaobject_definitions, True, True
-        )
 
         # Step 2: get existing metafields
         metafield_definitions: dict[
             str, Any
-        ] = await self.metafield_service.get_definitions("PRODUCT")
-        metafield_definitions = {
-            key: value
-            for key, value in metafield_definitions.items()
-            if value["namespace"] == slugify(namespace, separator="_")
-        }
-        save_json(
-            "_debug_metafield_definitions.json", metafield_definitions, True, True
+        ] = await self.metafield_service.get_definitions(
+            owner_type="PRODUCT", namespace=slugify(namespace, separator="_")
         )
 
         # Step 3: add IDs to all_properties based on existing metaobjects and metafields
@@ -249,15 +232,54 @@ class ProductPropertiesService:
 
             # Create metafield for property if it doesn't exist
             if metafield_exists:
-                # Create metafield
-                pass
+                metafield: dict[str, Any] = metafield_definitions[
+                    namespace + " - " + property_title
+                ]
             else:
-                pass
+                definition: dict[str, Any] = {
+                    "ownerType": "PRODUCT",
+                    "namespace": slugify(namespace, separator="_"),
+                    "key": details["key"],
+                    "name": namespace + " - " + property_title,
+                    "constraints": {
+                        "key": "category",
+                        "values": category_constraints,
+                    },
+                    "access": {"storefront": "PUBLIC_READ"},
+                    "capabilities": {
+                        "adminFilterable": {"enabled": False}
+                    },  # see note below
+                }
 
-            # print(
-            #     f"Metafield exists: {metafield_exists}\nMetaobject exists: {metaobject_exists}\nAll values exist: {all_values_exist if is_metaobject else 'N/A'}"
-            # )
-            # print(json.dumps({property_title: details}, indent=2))
+                # NOTE: METAFIELD ADMIN FILTERABLE:
+                #   Only 50 metafields can be marked as adminFilterable, so we won't enable it for any of the properties for now.
+                #   This means that these metafields won't be available as filters in the Shopify admin, but it also means that
+                #   we won't run into the limit of 50 adminFilterable metafields.
+
+                if is_metaobject:
+                    if details["single_or_multi"] == "single":
+                        definition["type"] = "metaobject_reference"
+                    else:
+                        definition["type"] = "list.metaobject_reference"
+
+                    definition["validations"] = [
+                        {
+                            "name": "metaobject_definition_id",
+                            "value": metaobject["id"],  # type: ignore
+                        }
+                    ]
+
+                else:
+                    if details["single_or_multi"] == "single":
+                        definition["type"] = "single_line_text_field"
+                    else:
+                        definition["type"] = "list.single_line_text_field"
+
+                metafield: dict[
+                    str, Any
+                ] = await self.metafield_service.create_definition(
+                    variables={"definition": definition}
+                )
 
         self.logger.debug("Prepared property definitions")
         return all_properties
@@ -286,9 +308,6 @@ class ProductPropertiesService:
                     existing_property = all_properties.get(property_title) or None
 
                     if existing_property is not None:
-                        # print(json.dumps({property_title: details.to_dict()}, indent=2))
-                        # print(json.dumps({property_title: existing_property}, indent=2))
-
                         if details.field_type == "metafield":
                             name: str = (
                                 existing_property["namespace"]
@@ -298,25 +317,26 @@ class ProductPropertiesService:
 
                             processed_properties[name.lower()] = details.values
 
-                        # elif details.field_type == "metaobject":
-                        #     property_id: str = (
-                        #         all_properties.get(property_title, {})
-                        #         .get("shopify_data", {})
-                        #         .get("metafield_id")
-                        #     )
-                        #     if isinstance(details.values, str):
-                        #         property_values_ids = all_properties.get(
-                        #             property_title, {}
-                        #         ).get("values", [])[details.values]
-                        #     else:
-                        #         property_values_ids = [
-                        #             all_properties.get(property_title, {}).get(
-                        #                 "values", []
-                        #             )[val]
-                        #             for val in details.values
-                        #         ]
-                        #     if property_id and property_values_ids:
-                        #         processed_properties[property_id] = property_values_ids
+                        elif details.field_type == "metaobject":
+                            name: str = (
+                                existing_property["namespace"]
+                                + "."
+                                + existing_property["key"]
+                            )
+
+                            if isinstance(details.values, str):
+                                values = existing_property["values"].get(
+                                    details.values, None
+                                )
+
+                            else:
+                                values = [
+                                    existing_property["values"].get(val, None)
+                                    for val in details.values
+                                ]
+
+                            if values is not None:
+                                processed_properties[name.lower()] = values
 
             product.extra_data["processed_properties"] = processed_properties
 
