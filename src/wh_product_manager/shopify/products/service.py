@@ -13,9 +13,8 @@ from wh_product_manager.shopify.client import ShopifyGraphQLClient
 from wh_product_manager.shopify.helpers.stock_location import StockLocation
 from wh_product_manager.shopify.inventory import InventoryService
 from wh_product_manager.shopify.product_properties import ProductPropertiesService
-from wh_product_manager.shopify.products.product_parent import ProductParent
-from wh_product_manager.shopify.products.product_set import ProductSet
-from wh_product_manager.shopify.products.product_variant import ProductVariant
+from wh_product_manager.shopify.products.product_create import ProductCreate
+from wh_product_manager.shopify.products.product_update import ProductUpdate
 from wh_product_manager.shopify.publishing import PublicationService
 from wh_product_manager.suppliers.base import BaseSupplier
 from wh_product_manager.suppliers.schemas import UnifiedProduct
@@ -60,10 +59,8 @@ class ProductService:
         self.categories_service = categories_service
         self.product_properties_service = product_properties_service
 
-        # Initialize sub-managers
-        self.product_parent = ProductParent(shopify_client, logger)
-        self.product_variant = ProductVariant(shopify_client, logger)
-        self.product_set = ProductSet(shopify_client, logger)
+        self.product_create = ProductCreate(shopify_client, logger)
+        self.product_update = ProductUpdate(shopify_client, logger)
 
     async def create_products_for_supplier(
         self, supplier: BaseSupplier, new_products_limit: int | None = None
@@ -77,13 +74,13 @@ class ProductService:
         """
         self.logger.info(f"Starting product creation for supplier: {supplier.name}")
 
+        update_time = datetime.now(timezone.utc).isoformat()
+
         location_id = await StockLocation.get_id_by_name(
             supplier.name, self.shopify_client, self.logger
         )
 
         inventory, new_products, _ = await self._prepare_product_data(supplier)
-
-        update_time = datetime.now(timezone.utc).isoformat()
 
         # Prepare and fetch categories. Create any new categories if needed
         categories = await self.categories_service.get_product_categories(new_products)
@@ -141,7 +138,7 @@ class ProductService:
                     for cat in necessary_categories
                 ]
 
-                response = await self.product_set.graphql_mutation__create(
+                response = await self.product_create.graphql_mutation__create(
                     product, location_id
                 )
 
@@ -175,7 +172,7 @@ class ProductService:
         self, supplier: BaseSupplier
     ) -> dict[str, Any]:
         """
-        Update products for a given supplier
+        Update products in batches for a given supplier
         Orchestrates the update of parent and variant products
 
         Args:
@@ -183,47 +180,69 @@ class ProductService:
         """
         self.logger.info(f"Starting product update for supplier: {supplier.name}")
 
-        inventory, _, supplier_data = await self._prepare_product_data(supplier)
-
         update_time = datetime.now(timezone.utc).isoformat()
 
+        # Fetch Shopify and supplier data
+        # NOTE: This function already filters the supplier data to only contain products
+        #       that are present in the inventory. Products in the inventory that are not present
+        #       in the supplier data are not updated, but they are also not deleted.
+        #       Handling of products that are not updated is done separately.
+        inventory, _, supplier_data = await self._prepare_product_data(supplier)
+
+        self.logger.info("Shopify and supplier data fetched.")
+
+        # Prepare update mutations for all products that need to be updated
         self.logger.info(
-            f"Data fetched. Updating {len(inventory)} products for supplier: {supplier.name}"
+            "Preparing update mutations for products that need to be updated."
+        )
+        mutation_items = await self.product_update.prepare_update_mutations(
+            inventory, supplier_data, update_time
         )
 
-        responses: list[dict[str, Any]] = []
+        if len(mutation_items) == 0:
+            self.logger.info("No products to update.")
+            return {
+                "found": len(inventory),
+                "updated": 0,
+                "updated_at": update_time,
+                "execution_duration": None,
+                "response": [],
+            }
 
-        for parent_sku, product in supplier_data.items():
+        # Prepare batches
+        self.logger.info("Preparing mutation batches.")
+
+        batch_size = 10
+        batches: list[str] = []
+
+        for i in range(0, len(mutation_items), batch_size):
+            batch = mutation_items[i : i + batch_size]
+
+            mutation = f"""
+                mutation {{
+                    {chr(10).join(batch)}
+                }}
+            """
+
+            batches.append(mutation)
+
+        # Execute batches
+        self.logger.info(f"Executing {len(batches)} mutation batches.")
+
+        zerofill = len(str(len(batches)))
+        for idx, batch in enumerate(batches):
+            logger_prefix = f"[Batch {str(idx + 1).zfill(zerofill)}/{len(batches)}]"
             try:
-                self.logger.debug(f"Updating product: '{parent_sku} - {product.title}'")
-
-                inventory_item = inventory.get(parent_sku)
-
-                if inventory_item is None:
-                    self.logger.warning(
-                        f"Skipping product update for '{parent_sku} - {product.title}' due to missing inventory data"
-                    )
-                    continue  # Skip product update if inventory data is missing
-
-                product.extra_data["parent_sku"] = parent_sku
-                product.extra_data["update_time"] = update_time
-
-                response = await self.product_set.graphql_mutation__update(
-                    product, inventory_item
-                )
-
-                responses.append(response)
-
+                self.logger.debug(f"{logger_prefix} Starting batch execution")
+                # response = await self.shopify_client.execute(batch)
+                response = "test response"
+                self.logger.debug(f"{logger_prefix} Batch response: {response}")
             except Exception as e:
-                self.logger.error(
-                    f"Error updating product '{parent_sku} - {product.title}': {str(e)}"
-                )
+                self.logger.error(f"{logger_prefix} Error executing batch: {str(e)}")
 
-            if len(responses) >= 50:
-                break
-            else:
-                break
-                pass
+        self.logger.info(f"Finished executing {len(batches)} mutation batches.")
+
+        responses: list[dict[str, Any]] = []
 
         self.logger.info(f"Finished updating {len(supplier_data)} products")
 
@@ -231,6 +250,7 @@ class ProductService:
             "found": len(inventory),
             "updated": len(supplier_data),
             "updated_at": update_time,
+            "execution_duration": None,
             "response": responses,
         }
 

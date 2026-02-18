@@ -12,12 +12,12 @@ from wh_product_manager.shopify.products.mutations import mutation_create_produc
 from wh_product_manager.suppliers.schemas import UnifiedProduct
 
 
-class ProductSet:
-    """Manages product set (parent + variant) operations"""
+class ProductCreate:
+    """Manages product creation operations"""
 
     def __init__(self, shopify_client: ShopifyGraphQLClient, logger: Logger):
         """
-        Initialize product set manager
+        Initialize product creation manager
 
         Args:
             shopify_client: ShopifyGraphQLClient instance
