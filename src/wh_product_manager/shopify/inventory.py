@@ -93,7 +93,7 @@ class InventoryService:
                     "cursor": cursor,
                 }
 
-                response = await self.shopify_client.query(query, variables)
+                response = await self.shopify_client.run(query, variables)
 
                 data = response.get("data", {}).get("inventoryItems", {})
 

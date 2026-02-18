@@ -50,7 +50,7 @@ class PublicationService:
                 }
             """
 
-            response = await self.shopify_client.query(mutation)
+            response = await self.shopify_client.run(mutation)
             for x, object_id in enumerate(batch_ids):
                 user_errors = (
                     response.get("data", {})
@@ -86,7 +86,7 @@ class PublicationService:
             }
         """
 
-        response = await self.shopify_client.query(query)
+        response = await self.shopify_client.run(query)
 
         publication_ids = (
             response.get("data", {}).get("publications", {}).get("edges", [])

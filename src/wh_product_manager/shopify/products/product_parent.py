@@ -36,7 +36,7 @@ class ProductParent:
             "product": product_graphql.get("product", {}),
         }
 
-        response = await self.shopify_client.query(mutation, variables)
+        response = await self.shopify_client.run(mutation, variables)
 
         return {
             product.title: {

@@ -391,6 +391,10 @@ class UnifiedProduct:
             },
         }
 
+    def graphql_variable__update_set(self, inventory: dict[str, Any]) -> dict[str, Any]:
+        """Format product data for Shopify GraphQL product update of product set (parent + variant)"""
+        return {"Inventory": inventory}
+
 
 @dataclass
 class SupplierDataResult:

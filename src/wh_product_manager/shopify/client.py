@@ -36,8 +36,11 @@ class ShopifyGraphQLClient:
             f"ShopifyGraphQLClient initialized for {settings.SHOPIFY_SHOP_URL}"
         )
 
-    async def query(
-        self, query_string: str, variables: dict[str, Any] | None = None
+    async def run(
+        self,
+        query_string: str,
+        variables: dict[str, Any] | None = None,
+        enable_timeout: bool = True,
     ) -> dict[str, Any]:
         """
         Execute a GraphQL query against Shopify API
@@ -45,6 +48,7 @@ class ShopifyGraphQLClient:
         Args:
             query_string: GraphQL query string
             variables: Optional variables for the GraphQL query
+            enable_timeout: Whether to enable a timeout of 30 seconds for the request (default: True)
 
         Returns:
             dict: GraphQL response data
@@ -64,7 +68,7 @@ class ShopifyGraphQLClient:
                         "query": query_string,
                         "variables": variables or {},
                     },
-                    timeout=30.0,
+                    timeout=30.0 if enable_timeout else None,
                 )
                 response.raise_for_status()
 

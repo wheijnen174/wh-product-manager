@@ -46,28 +46,55 @@ async def shopify_inventory(
 
 
 @router.get("/create")
-async def create_products(supplier: str) -> JSONResponse:
+async def create_products(
+    supplier: str, new_products_limit: int | None = 1
+) -> JSONResponse:
     """Endpoint to trigger product creation for a supplier"""
+
+    if new_products_limit is not None and new_products_limit <= 0:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": [
+                    {
+                        "type": "invalid",
+                        "loc": ["query", "new_products_limit"],
+                        "msg": "Field must be a positive integer",
+                        "input": new_products_limit,
+                    }
+                ]
+            },
+        )
+
     services = _get_services()
     supplier_exists = await services.supplier_service.supplier_exists(supplier)
 
     if not supplier_exists:
         return JSONResponse(
             status_code=404,
-            content={"error": f"Supplier '{supplier}' not found"},
+            content={
+                "detail": [
+                    {
+                        "type": "invalid",
+                        "loc": ["query", "supplier"],
+                        "msg": "Supplier not found",
+                        "input": supplier,
+                    }
+                ]
+            },
         )
 
     async with product_operation_lock:
         supplier_obj = await services.supplier_service.get_supplier(supplier)
 
         result = await services.product_service.create_products_for_supplier(
-            supplier_obj
+            supplier_obj, new_products_limit
         )
 
         return JSONResponse(
             status_code=200,
             content={
-                "status": f"Supplier '{supplier}' found, product creation initiated",
+                "status": f"Supplier '{supplier}' found, product creation finished",
                 "result": result,
             },
         )
@@ -82,7 +109,16 @@ async def update_products(supplier: str) -> JSONResponse:
     if not supplier_exists:
         return JSONResponse(
             status_code=404,
-            content={"error": f"Supplier '{supplier}' not found"},
+            content={
+                "detail": [
+                    {
+                        "type": "invalid",
+                        "loc": ["query", "supplier"],
+                        "msg": "Supplier not found",
+                        "input": supplier,
+                    }
+                ]
+            },
         )
 
     async with product_operation_lock:
@@ -97,7 +133,7 @@ async def update_products(supplier: str) -> JSONResponse:
         return JSONResponse(
             status_code=200,
             content={
-                "status": f"Supplier '{supplier}' found, product update initiated",
+                "status": f"Supplier '{supplier}' found, product update finished",
                 "result": result,
             },
         )

@@ -134,7 +134,7 @@ class CategoriesService:
                 "cursor": cursor,
             }
 
-            response = await self.shopify_client.query(query, variables)
+            response = await self.shopify_client.run(query, variables)
 
             data = response.get("data", {}).get("collections", {})
 
@@ -236,7 +236,7 @@ class CategoriesService:
             }
         }
 
-        response = await self.shopify_client.query(mutation, variables)
+        response = await self.shopify_client.run(mutation, variables)
 
         data = (
             response.get("data", {}).get("collectionCreate", {}).get("collection", {})

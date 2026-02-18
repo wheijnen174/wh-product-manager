@@ -21,7 +21,7 @@ class MetafieldService:
     async def get_definitions(
         self, owner_type: str, namespace: str | None = None
     ) -> dict[str, Any]:
-        # test = await self.delete_all_metafields()
+        # await self.delete_all_metafields()
         # raise
 
         query = self._query_get_definitions()
@@ -37,7 +37,7 @@ class MetafieldService:
                 "cursor": cursor,
             }
 
-            response = await self.shopify_client.query(query, variables)
+            response = await self.shopify_client.run(query, variables)
 
             data = response.get("data", {}).get("metafieldDefinitions", {})
 
@@ -73,7 +73,7 @@ class MetafieldService:
 
         mutation = self._mutation_create_definition()
 
-        response = await self.shopify_client.query(mutation, variables)
+        response = await self.shopify_client.run(mutation, variables)
 
         data = (
             response.get("data", {})
@@ -190,7 +190,7 @@ class MetafieldService:
             }
         """
 
-        response_fetch = await self.shopify_client.query(query_fetch)
+        response_fetch = await self.shopify_client.run(query_fetch)
 
         data = (
             response_fetch.get("data", {})
@@ -218,7 +218,9 @@ class MetafieldService:
             }
         """
 
-        response_delete = await self.shopify_client.query(mutation_delete)
+        response_delete = await self.shopify_client.run(
+            mutation_delete, enable_timeout=False
+        )
 
         print(json.dumps(response_delete, indent=2))
         raise

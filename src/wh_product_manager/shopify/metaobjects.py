@@ -31,7 +31,7 @@ class MetaobjectService:
                 "cursor": cursor,
             }
 
-            response = await self.shopify_client.query(query, variables)
+            response = await self.shopify_client.run(query, variables)
 
             data = response.get("data", {}).get("metaobjectDefinitions", {})
 
@@ -76,7 +76,7 @@ class MetaobjectService:
         ]
 
         if have_large_objects:
-            self.logger.info(
+            self.logger.debug(
                 "Retrieving additional data for large metaobjects with more than 250 entries."
             )
             existing_definitions = await self._get_extra_values(existing_definitions)
@@ -118,7 +118,7 @@ class MetaobjectService:
             }
         }
 
-        response = await self.shopify_client.query(mutation, variables)
+        response = await self.shopify_client.run(mutation, variables)
 
         data = (
             response.get("data", {})
@@ -166,7 +166,7 @@ class MetaobjectService:
                 }
             }
 
-            response = await self.shopify_client.query(mutation, variables)
+            response = await self.shopify_client.run(mutation, variables)
 
             data = (
                 response.get("data", {})
@@ -204,7 +204,7 @@ class MetaobjectService:
                     "cursor": cursor,
                 }
 
-                response = await self.shopify_client.query(query, variables)
+                response = await self.shopify_client.run(query, variables)
 
                 data = response.get("data", {}).get("metaobjects", {})
 

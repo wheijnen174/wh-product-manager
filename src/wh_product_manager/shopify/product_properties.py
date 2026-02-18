@@ -195,13 +195,11 @@ class ProductPropertiesService:
         for property_title, details in all_properties.items():
             is_metaobject = details["field_type"] == "metaobject"
 
-            metafield_exists = (
-                namespace + " - " + property_title
-            ) in metafield_definitions
-
             metaobject_exists = (
                 namespace + " - " + property_title
             ) in metaobject_definitions
+
+            metafield_exists = property_title in metafield_definitions
 
             # Create metaobject for property if it is a metaobject and doesn't exist
             if is_metaobject:
@@ -232,15 +230,13 @@ class ProductPropertiesService:
 
             # Create metafield for property if it doesn't exist
             if metafield_exists:
-                metafield: dict[str, Any] = metafield_definitions[
-                    namespace + " - " + property_title
-                ]
+                metafield: dict[str, Any] = metafield_definitions[property_title]  # type: ignore # noqa: F841
             else:
                 definition: dict[str, Any] = {
                     "ownerType": "PRODUCT",
                     "namespace": slugify(namespace, separator="_"),
                     "key": details["key"],
-                    "name": namespace + " - " + property_title,
+                    "name": property_title,
                     "constraints": {
                         "key": "category",
                         "values": category_constraints,
@@ -275,7 +271,7 @@ class ProductPropertiesService:
                     else:
                         definition["type"] = "list.single_line_text_field"
 
-                metafield: dict[
+                metafield: dict[  # type: ignore # noqa: F841
                     str, Any
                 ] = await self.metafield_service.create_definition(
                     variables={"definition": definition}

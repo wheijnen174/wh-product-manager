@@ -66,7 +66,7 @@ class ProductService:
         self.product_set = ProductSet(shopify_client, logger)
 
     async def create_products_for_supplier(
-        self, supplier: BaseSupplier
+        self, supplier: BaseSupplier, new_products_limit: int | None = None
     ) -> dict[str, Any]:
         """
         Create products for a given supplier
@@ -81,9 +81,7 @@ class ProductService:
             supplier.name, self.shopify_client, self.logger
         )
 
-        inventory, new_products, existing_products = await self._prepare_product_data(
-            supplier
-        )
+        inventory, new_products, _ = await self._prepare_product_data(supplier)
 
         update_time = datetime.now(timezone.utc).isoformat()
 
@@ -105,6 +103,12 @@ class ProductService:
         )
 
         responses: list[dict[str, Any]] = []
+
+        if new_products_limit is not None:
+            new_products = dict(list(new_products.items())[:new_products_limit])
+            self.logger.info(
+                f"Limiting to {new_products_limit} new products for supplier: {supplier.name}"
+            )
 
         for parent_sku, product in new_products.items():
             try:
@@ -148,17 +152,14 @@ class ProductService:
                     f"Error creating product '{parent_sku} - {product.title}': {str(e)}"
                 )
 
-            if len(responses) >= 50:
-                break
-
-        self.logger.info("Finished creating products")
-
         product_ids_to_publish: list[str] = []
         for item in responses:
             for data in item.values():
                 product_id = data.get("product_id")
                 if product_id:
                     product_ids_to_publish.append(product_id)
+
+        self.logger.info(f"Finished creating {len(product_ids_to_publish)} products")
 
         await self.publication_service.publish_shopify_objects(product_ids_to_publish)
 
@@ -167,7 +168,6 @@ class ProductService:
         return {
             "found": len(inventory),
             "created": len(new_products),
-            "skipped": len(existing_products),
             "response": responses,
         }
 
@@ -183,14 +183,55 @@ class ProductService:
         """
         self.logger.info(f"Starting product update for supplier: {supplier.name}")
 
-        inventory, _, existing_products = await self._prepare_product_data(supplier)
+        inventory, _, supplier_data = await self._prepare_product_data(supplier)
 
         update_time = datetime.now(timezone.utc).isoformat()
 
+        self.logger.info(
+            f"Data fetched. Updating {len(inventory)} products for supplier: {supplier.name}"
+        )
+
+        responses: list[dict[str, Any]] = []
+
+        for parent_sku, product in supplier_data.items():
+            try:
+                self.logger.debug(f"Updating product: '{parent_sku} - {product.title}'")
+
+                inventory_item = inventory.get(parent_sku)
+
+                if inventory_item is None:
+                    self.logger.warning(
+                        f"Skipping product update for '{parent_sku} - {product.title}' due to missing inventory data"
+                    )
+                    continue  # Skip product update if inventory data is missing
+
+                product.extra_data["parent_sku"] = parent_sku
+                product.extra_data["update_time"] = update_time
+
+                response = await self.product_set.graphql_mutation__update(
+                    product, inventory_item
+                )
+
+                responses.append(response)
+
+            except Exception as e:
+                self.logger.error(
+                    f"Error updating product '{parent_sku} - {product.title}': {str(e)}"
+                )
+
+            if len(responses) >= 50:
+                break
+            else:
+                break
+                pass
+
+        self.logger.info(f"Finished updating {len(supplier_data)} products")
+
         return {
             "found": len(inventory),
-            "updated": len(existing_products),
+            "updated": len(supplier_data),
             "updated_at": update_time,
+            "response": responses,
         }
 
     async def _prepare_product_data(

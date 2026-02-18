@@ -50,7 +50,7 @@ class StockLocation:
         try:
             variables: dict[str, Any] = {"query": f"name:{location_name}"}
 
-            response = await shopify_client.query(query, variables)
+            response = await shopify_client.run(query, variables)
 
             locations = response.get("data", {}).get("locations", {}).get("edges", [])
 
