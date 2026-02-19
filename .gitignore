@@ -10,8 +10,9 @@ build/
 .env.local
 .env.*
 
-# Custom debugging files
+# Custom files
 assets/_debug_*
+assets/onedc_product_data_*.xml
 
 # Nuitka build output
 dist/
