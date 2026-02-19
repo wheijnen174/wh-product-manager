@@ -81,6 +81,15 @@ def load_csv(filename: str, delimiter: str = ",") -> list[dict[Any, Any]]:
         return list(reader)
 
 
+def save_txt(filename: str, data: str) -> None:
+    """Save a text file to the assets directory"""
+    data_dir = get_assets_dir()
+    filepath = data_dir / filename
+
+    with open(filepath, "w+", encoding="utf-8") as f:
+        f.write(data)
+
+
 def get_log_file() -> Path:
     """Get the path to app.log"""
     data_dir = get_assets_dir()

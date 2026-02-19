@@ -3,6 +3,7 @@ Shopify Product Service
 Orchestrates all product operations
 """
 
+import json
 from datetime import datetime, timezone
 from typing import Any
 
@@ -196,7 +197,7 @@ class ProductService:
             "Preparing update mutations for products that need to be updated."
         )
         mutation_items = await self.product_update.prepare_update_mutations(
-            inventory, supplier_data, update_time
+            supplier.name, inventory, supplier_data, update_time
         )
 
         if len(mutation_items) == 0:
@@ -212,7 +213,7 @@ class ProductService:
         # Prepare batches
         self.logger.info("Preparing mutation batches.")
 
-        batch_size = 10
+        batch_size = 75
         batches: list[str] = []
 
         for i in range(0, len(mutation_items), batch_size):
@@ -221,6 +222,7 @@ class ProductService:
             mutation = f"""
                 mutation {{
                     {chr(10).join(batch)}
+
                 }}
             """
 
@@ -229,29 +231,59 @@ class ProductService:
         # Execute batches
         self.logger.info(f"Executing {len(batches)} mutation batches.")
 
+        user_errors: dict[str, Any] = {}
+
+        execution_start_time = datetime.now(timezone.utc)
+
         zerofill = len(str(len(batches)))
         for idx, batch in enumerate(batches):
             logger_prefix = f"[Batch {str(idx + 1).zfill(zerofill)}/{len(batches)}]"
             try:
-                self.logger.debug(f"{logger_prefix} Starting batch execution")
-                # response = await self.shopify_client.execute(batch)
-                response = "test response"
-                self.logger.debug(f"{logger_prefix} Batch response: {response}")
+                self.logger.info(f"{logger_prefix} Starting batch execution")
+                batch_start_time = datetime.now(timezone.utc)
+
+                response = await self.shopify_client.run(batch)
+
+                batch_user_errors = {
+                    key: item.get("userErrors", [])
+                    for key, item in response.get("data", {}).items()
+                    if item.get("userErrors", []) != []
+                }
+
+                user_errors = user_errors | batch_user_errors
+
+                batch_end_time = datetime.now(timezone.utc)
+
+                if len(batch_user_errors) == 0:
+                    batch_duration = round(
+                        (batch_end_time - batch_start_time).total_seconds(), 1
+                    )
+                    self.logger.info(
+                        f"{logger_prefix} Batch successfully completed in {batch_duration} seconds"
+                    )
+                else:
+                    self.logger.warning(
+                        f"{logger_prefix} Errors during batch:\n"
+                        + json.dumps(batch_user_errors),
+                    )
+
             except Exception as e:
                 self.logger.error(f"{logger_prefix} Error executing batch: {str(e)}")
 
         self.logger.info(f"Finished executing {len(batches)} mutation batches.")
 
-        responses: list[dict[str, Any]] = []
-
-        self.logger.info(f"Finished updating {len(supplier_data)} products")
+        execution_end_time = datetime.now(timezone.utc)
+        batch_duration = (
+            str(round((execution_end_time - execution_start_time).total_seconds(), 1))
+            + " seconds"
+        )
 
         return {
             "found": len(inventory),
             "updated": len(supplier_data),
             "updated_at": update_time,
-            "execution_duration": None,
-            "response": responses,
+            "execution_duration": batch_duration,
+            "user_errors": user_errors,
         }
 
     async def _prepare_product_data(

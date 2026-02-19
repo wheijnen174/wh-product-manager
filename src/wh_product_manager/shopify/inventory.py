@@ -156,21 +156,23 @@ class InventoryService:
                                     }
                                 }
                             }
-                            variant {
-                                id
-                                price
-                                metafield(key: "whpm.update_time") {
-                                    value
-                                }
-                                product {
+                            variants(first: 1) {
+                                nodes {
                                     id
-                                    status
-                                    vendor
-                                    metafields(first: 5, keys: ["whpm.head_article_number", "whpm.update_time"]) {
-                                        edges {
-                                            node {
-                                                key
-                                                value
+                                    price
+                                    metafield(key: "whpm.update_time") {
+                                        value
+                                    }
+                                    product {
+                                        id
+                                        status
+                                        vendor
+                                        metafields(first: 5, keys: ["whpm.head_article_number", "whpm.update_time"]) {
+                                            edges {
+                                                node {
+                                                    key
+                                                    value
+                                                }
                                             }
                                         }
                                     }
@@ -209,7 +211,7 @@ class InventoryService:
         for edge in batch_data:
             try:
                 node = edge["node"]
-                variant = node["variant"]
+                variant = node["variants"]["nodes"][0]
                 product = variant["product"]
                 metafields = product.get("metafields", {}).get("edges", [])
 
