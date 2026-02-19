@@ -47,7 +47,7 @@ async def shopify_inventory(
 
 @router.get("/create")
 async def create_products(
-    supplier: str, new_products_limit: int | None = 1
+    supplier: str, new_products_limit: int | None = None
 ) -> JSONResponse:
     """Endpoint to trigger product creation for a supplier"""
 

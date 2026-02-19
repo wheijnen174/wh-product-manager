@@ -54,30 +54,29 @@ class Supplier_OneDC(BaseSupplier):
             httpx.HTTPError: If the API request fails
         """
         try:
-            # Offline data for testing purposes
-            from wh_product_manager.utils.data_loader import get_assets_dir
+            # # Offline data for testing purposes
+            # from wh_product_manager.utils.data_loader import get_assets_dir
 
-            assets_dir = get_assets_dir()
-            with open(
-                assets_dir / "onedc_product_data_20260210.xml", "r", encoding="utf-8"
-            ) as file:
-                xml_content = file.read()
+            # assets_dir = get_assets_dir()
+            # with open(
+            #     assets_dir / "onedc_product_data_20260210.xml", "r", encoding="utf-8"
+            # ) as file:
+            #     xml_content = file.read()
 
-                data = xmltodict.parse(xml_content)
-
-                return data
-
-            # # Actual internet-fetching disabled for testing purposes, return offline data instead
-            # async with httpx.AsyncClient() as client:
-            #     response = await client.get(
-            #         self.settings.ONEDC_XML_URL,
-            #         timeout=30.0,
-            #     )
-            #     response.raise_for_status()
-
-            #     data = xmltodict.parse(response.text)
+            #     data = xmltodict.parse(xml_content)
 
             #     return data
+
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    self.settings.ONEDC_XML_URL,
+                    timeout=30.0,
+                )
+                response.raise_for_status()
+
+                data = xmltodict.parse(response.text)
+
+                return data
 
         except httpx.HTTPError as e:
             self.logger.error(f"HTTP request failed: {str(e)}")

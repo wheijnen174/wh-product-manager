@@ -161,7 +161,7 @@ class ProductService:
 
         await self.publication_service.publish_shopify_objects(product_ids_to_publish)
 
-        self.logger.info("Published new products")
+        self.logger.info(f"Published {len(product_ids_to_publish)} new products")
 
         return {
             "found": len(inventory),
@@ -239,7 +239,7 @@ class ProductService:
         for idx, batch in enumerate(batches):
             logger_prefix = f"[Batch {str(idx + 1).zfill(zerofill)}/{len(batches)}]"
             try:
-                self.logger.info(f"{logger_prefix} Starting batch execution")
+                self.logger.debug(f"{logger_prefix} Starting batch execution")
                 batch_start_time = datetime.now(timezone.utc)
 
                 response = await self.shopify_client.run(batch)
@@ -258,7 +258,7 @@ class ProductService:
                     batch_duration = round(
                         (batch_end_time - batch_start_time).total_seconds(), 1
                     )
-                    self.logger.info(
+                    self.logger.debug(
                         f"{logger_prefix} Batch successfully completed in {batch_duration} seconds"
                     )
                 else:
