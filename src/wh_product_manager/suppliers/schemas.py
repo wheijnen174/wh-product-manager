@@ -363,9 +363,9 @@ class UnifiedProduct:
 
         tags = ["Nieuw"]
 
-        if (
-            self.properties is not None
-            and self.properties.get("Populariteit", "1") == "4"
+        if self.properties is not None and (
+            self.properties.get("Populariteit", "1") == "4"
+            or self.properties.get("Populariteit", 1) == 4
         ):
             tags.append("Populair")
 
