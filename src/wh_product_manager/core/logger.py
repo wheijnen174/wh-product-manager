@@ -53,30 +53,12 @@ class Logger:
         # Remove existing handlers to avoid duplicates
         self.logger.handlers.clear()
 
-        # Console handler with colors
-        self._add_console_handler(log_level)
-
         # File handler if log_dir specified
         if self.log_dir:
-            self._add_file_handler(log_level, self.log_dir)
+            self._add_file_handler(0, self.log_dir)
 
-    def _add_console_handler(self, level: int) -> None:
-        """
-        Add console handler with colored output
-
-        Args:
-            level: Logging level
-        """
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(level)
-
-        # Colored formatter for console
-        formatter = _ColoredFormatter(
-            fmt="%(levelname)s %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
-        console_handler.setFormatter(formatter)
-        self.logger.addHandler(console_handler)
+        # Console handler with colors
+        self._add_console_handler(log_level)
 
     def _add_file_handler(self, level: int, log_dir: Path) -> None:
         """
@@ -95,52 +77,65 @@ class Logger:
         file_handler.setLevel(level)
 
         # Standard formatter for file (no colors)
-        formatter = logging.Formatter(
-            fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        file_formatter = logging.Formatter(
+            fmt="%(asctime)s - %(levelname)s - %(module)s - %(funcName)s - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
-        file_handler.setFormatter(formatter)
+        file_handler.setFormatter(file_formatter)
         self.logger.addHandler(file_handler)
+
+    def _add_console_handler(self, level: int) -> None:
+        """
+        Add console handler with colored output
+
+        Args:
+            level: Logging level
+        """
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(level)
+
+        # Colored formatter for console
+        console_formatter = _ConsoleFormatter(
+            fmt="%(levelname)s %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+        console_handler.setFormatter(console_formatter)
+        self.logger.addHandler(console_handler)
 
     def debug(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log a debug message"""
+        kwargs.setdefault("stacklevel", 2)
         self.logger.debug(message, *args, **kwargs)
 
     def info(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log an info message"""
+        kwargs.setdefault("stacklevel", 2)
         self.logger.info(message, *args, **kwargs)
 
     def warning(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log a warning message"""
+        kwargs.setdefault("stacklevel", 2)
         self.logger.warning(message, *args, **kwargs)
 
     def error(
         self, message: str, *args: Any, exc_info: bool = True, **kwargs: Any
     ) -> None:
-        """
-        Log an error message
-
-        Args:
-            message: Error message
-            exc_info: Include exception traceback
-        """
+        """Log an error message"""
+        kwargs.setdefault("stacklevel", 2)
         self.logger.error(message, *args, exc_info=False, **kwargs)
 
     def critical(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log a critical message"""
+        kwargs.setdefault("stacklevel", 2)
         self.logger.critical(message, *args, **kwargs)
 
     def exception(self, message: str, *args: Any, **kwargs: Any) -> None:
-        """
-        Log an exception with full traceback
-
-        Args:
-            message: Error message
-        """
+        """Log an exception with full traceback"""
+        kwargs.setdefault("stacklevel", 2)
         self.logger.exception(message, *args, **kwargs)
 
 
-class _ColoredFormatter(logging.Formatter):
+class _ConsoleFormatter(logging.Formatter):
     """
     Custom formatter that adds colors to console output
     Only applies colors to console, not file logs

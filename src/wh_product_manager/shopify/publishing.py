@@ -21,6 +21,8 @@ class PublicationService:
 
         batch_size = 75  # Shopify allows up to 100, but using 75 to be safe with API limits and response size
 
+        # Fetch publication IDs once and reuse for all objects
+        # These are the IDs of all sales channels (Online Store, POS, etc.)
         publication_ids = await self.get_publication_ids()
         publication_ids = ",".join(
             [f"""{{publicationId: "{value}"}}""" for value in publication_ids.values()]
@@ -29,41 +31,52 @@ class PublicationService:
         for i in range(0, len(object_ids), batch_size):
             batch_ids = object_ids[i : i + batch_size]
 
-            mutation = """
-                mutation {
-            """
-
-            for x, object_id in enumerate(batch_ids):
-                mutation += f"""
-                    publishObject_{x + 1}: publishablePublish(
-                        id: "{object_id}",
-                        input: [{publication_ids}]
-                    ) {{
-                        userErrors {{
-                            field
-                            message
-                        }}
-                    }}
+            try:
+                mutation = """
+                    mutation {
                 """
 
-            mutation += """
-                }
-            """
+                for x, object_id in enumerate(batch_ids):
+                    try:
+                        mutation += f"""
+                            publishObject_{x + 1}: publishablePublish(
+                                id: "{object_id}",
+                                input: [{publication_ids}]
+                            ) {{
+                                userErrors {{
+                                    field
+                                    message
+                                }}
+                            }}
+                        """
+                    except Exception as e:
+                        self.logger.error(
+                            f"Error constructing mutation for object {object_id}: {e}"
+                        )
 
-            response = await self.shopify_client.run(mutation)
-            for x, object_id in enumerate(batch_ids):
-                user_errors = (
-                    response.get("data", {})
-                    .get(f"publishObject_{x + 1}", {})
-                    .get("userErrors", [])
-                )
+                mutation += """
+                    }
+                """
 
-                if user_errors:
-                    self.logger.error(
-                        f"Failed to publish object {object_id}: {user_errors}"
+                response = await self.shopify_client.run(mutation)
+
+                for x, object_id in enumerate(batch_ids):
+                    user_errors = (
+                        response.get("data", {})
+                        .get(f"publishObject_{x + 1}", {})
+                        .get("userErrors", [])
                     )
-                else:
-                    self.logger.debug(f"Successfully published object {object_id}")
+
+                    if user_errors:
+                        self.logger.error(
+                            f"Failed to publish object {object_id}: {user_errors}"
+                        )
+                    else:
+                        self.logger.debug(f"Successfully published object {object_id}")
+            except Exception as e:
+                self.logger.error(
+                    f"Error publishing batch starting with object {batch_ids[0]}: {e}"
+                )
 
     async def get_publication_ids(self) -> dict[str, str]:
         """

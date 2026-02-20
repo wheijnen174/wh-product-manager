@@ -101,7 +101,7 @@ async def create_products(
 
 
 @router.get("/update")
-async def update_products(supplier: str) -> JSONResponse:
+async def update_products(supplier: str, async_mode: bool = False) -> JSONResponse:
     """Endpoint to trigger product update for a supplier"""
     services = _get_services()
     supplier_exists = await services.supplier_service.supplier_exists(supplier)
@@ -126,9 +126,14 @@ async def update_products(supplier: str) -> JSONResponse:
 
         # TODO: Also implement updating of Shopify categories (not collections)!
 
-        result = await services.product_service.update_products_for_supplier(
-            supplier_obj
-        )
+        if not async_mode:
+            result = await services.product_service.update_products_for_supplier(
+                supplier_obj
+            )
+        else:
+            result = await services.product_service.update_products_for_supplier__async(
+                supplier_obj
+            )
 
         return JSONResponse(
             status_code=200,
