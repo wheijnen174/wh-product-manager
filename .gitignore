@@ -13,6 +13,7 @@ build/
 # Custom files
 assets/_debug_*
 assets/onedc_product_data_*.xml
+assets/async_results*
 
 # Nuitka build output
 dist/

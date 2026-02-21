@@ -68,7 +68,7 @@ def save_json(
         json.dump(data, f, ensure_ascii=False, indent=4 if indent else None)
 
 
-def load_csv(filename: str, delimiter: str = ",") -> list[dict[Any, Any]]:
+def load_csv(filename: str) -> list[dict[Any, Any]]:
     """Load a CSV file from the assets directory"""
     data_dir = get_assets_dir()
     filepath = data_dir / filename
@@ -77,8 +77,35 @@ def load_csv(filename: str, delimiter: str = ",") -> list[dict[Any, Any]]:
         raise FileNotFoundError(f"Assets file not found: {filepath}")
 
     with open(filepath, "r", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f, delimiter=delimiter)
+        reader = csv.DictReader(f, delimiter=";")
         return list(reader)
+
+
+def save_csv(filename: str, data: list[dict[Any, Any]]) -> None:
+    """Save a CSV file to the assets directory"""
+    data_dir = get_assets_dir()
+    filepath = data_dir / filename
+
+    if not filepath.exists():
+        raise FileNotFoundError(f"Assets file not found: {filepath}")
+
+    with open(filepath, "w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=data[0].keys(), delimiter=";")
+        writer.writeheader()
+        writer.writerows(data)
+
+
+def add_csv_line(filename: str, data: dict[Any, Any]) -> None:
+    """Add a line to a CSV file in the assets directory"""
+    data_dir = get_assets_dir()
+    filepath = data_dir / filename
+
+    if not filepath.exists():
+        raise FileNotFoundError(f"Assets file not found: {filepath}")
+
+    with open(filepath, "a", encoding="utf-8-sig", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=data.keys(), delimiter=";")
+        writer.writerow(data)
 
 
 def save_txt(filename: str, data: str) -> None:

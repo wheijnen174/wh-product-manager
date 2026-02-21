@@ -3,8 +3,10 @@ Shopify Product Service
 Orchestrates all product operations
 """
 
+import asyncio
 import json
 from datetime import datetime, timezone
+from random import randint
 from typing import Any
 
 from wh_product_manager.config import Settings
@@ -20,6 +22,7 @@ from wh_product_manager.shopify.publishing import PublicationService
 from wh_product_manager.suppliers.base import BaseSupplier
 from wh_product_manager.suppliers.schemas import UnifiedProduct
 from wh_product_manager.suppliers.service import SupplierService
+from wh_product_manager.utils.data_loader import add_csv_line, save_json
 
 
 class ProductService:
@@ -62,6 +65,11 @@ class ProductService:
 
         self.product_create = ProductCreate(shopify_client, logger)
         self.product_update = ProductUpdate(shopify_client, logger)
+
+        self.concurrent_batches = 5
+        self.batch_size_sync = 75
+        self.batch_size_async = 10
+        self.semaphore = asyncio.Semaphore(self.concurrent_batches)
 
     async def create_products_for_supplier(
         self, supplier: BaseSupplier, new_products_limit: int | None = None
@@ -213,7 +221,7 @@ class ProductService:
         # Prepare batches
         self.logger.info("Preparing mutation batches.")
 
-        batch_size = 75
+        batch_size = self.batch_size_sync
         batches: list[str] = []
 
         for i in range(0, len(mutation_items), batch_size):
@@ -331,7 +339,7 @@ class ProductService:
         # Prepare batches
         self.logger.info("Preparing mutation batches.")
 
-        batch_size = 75
+        batch_size = self.batch_size_async
         batches: list[str] = []
 
         for i in range(0, len(mutation_items), batch_size):
@@ -349,26 +357,93 @@ class ProductService:
         # Execute batches
         self.logger.info(f"Executing {len(batches)} mutation batches.")
 
-        user_errors: dict[str, Any] = {}
-
         execution_start_time = datetime.now(timezone.utc)
 
         zerofill = len(str(len(batches)))
-        for idx, batch in enumerate(batches):
-            logger_prefix = f"[Batch {str(idx + 1).zfill(zerofill)}/{len(batches)}]"
+        num_of_batches = len(batches)
+
+        tasks = [
+            self._execute_product_update_batch(batch, idx, zerofill, num_of_batches)
+            for idx, batch in enumerate(batches)
+        ]
+
+        results = await asyncio.gather(*tasks, return_exceptions=False)
+
+        user_errors: dict[str, Any] = {
+            batch["batch"]: {
+                "status": batch["status"],
+                "user_errors": batch["user_errors"],
+            }
+            for batch in results
+            if batch["user_errors"] != {}
+        }
+
+        save_json(
+            f"async_results_{execution_start_time.strftime('%Y%m%d_%H%M%S')}.json",
+            results,
+        )
+
+        execution_end_time = datetime.now(timezone.utc)
+        batch_duration_minutes = round(
+            (execution_end_time - execution_start_time).total_seconds() / 60, 1
+        )
+        batch_duration_seconds = round(
+            (execution_end_time - execution_start_time).total_seconds(), 1
+        )
+
+        self.logger.info(
+            f"Finished async executing {len(batches)} mutation batches in {batch_duration_minutes} minutes ({batch_duration_seconds} seconds)."
+        )
+
+        add_csv_line(
+            "async_update_durations.csv",
+            {
+                "type": "async",
+                "batch_size": self.batch_size_async,
+                "semaphore": self.semaphore._value,
+                "minutes": batch_duration_minutes,
+                "seconds": batch_duration_seconds,
+            },
+        )
+
+        total_retries = sum(batch["retry_count"] for batch in results)
+        self.logger.info(f"Total retries due to throttling: {total_retries}")
+
+        return {
+            "found": len(inventory),
+            "updated": len(supplier_data),
+            "updated_at": update_time,
+            "execution_duration_minutes": batch_duration_minutes,
+            "user_errors": user_errors,
+        }
+
+    async def _execute_product_update_batch(
+        self, batch: str, idx: int, zerofill: int, num_of_batches: int
+    ) -> dict[str, Any]:
+        async with self.semaphore:
+            logger_prefix = f"[Batch {str(idx + 1).zfill(zerofill)}/{num_of_batches}]"
+            retry_count = 0
+
             try:
                 self.logger.debug(f"{logger_prefix} Starting batch execution")
                 batch_start_time = datetime.now(timezone.utc)
 
-                response = await self.shopify_client.run(batch)
+                while True:
+                    response = await self.shopify_client.run(batch)
+                    if "errors" not in response:
+                        break
 
-                batch_user_errors = {
+                    self.logger.debug(
+                        f"{logger_prefix} Shopify API request throttled. Retrying after delay..."
+                    )
+                    retry_count += 1
+                    await asyncio.sleep(randint(1, 5))
+
+                batch_user_errors: dict[str, Any] = {
                     key: item.get("userErrors", [])
                     for key, item in response.get("data", {}).items()
                     if item.get("userErrors", []) != []
                 }
-
-                user_errors = user_errors | batch_user_errors
 
                 batch_end_time = datetime.now(timezone.utc)
 
@@ -385,26 +460,21 @@ class ProductService:
                         + json.dumps(batch_user_errors),
                     )
 
+                return {
+                    "batch": logger_prefix.replace("[", "").replace("]", ""),
+                    "status": "success" if len(batch_user_errors) == 0 else "errors",
+                    "retry_count": retry_count,
+                    "user_errors": batch_user_errors,
+                }
+
             except Exception as e:
                 self.logger.error(f"{logger_prefix} Error executing batch: {str(e)}")
-
-            break
-
-        self.logger.info(f"Finished async executing {len(batches)} mutation batches.")
-
-        execution_end_time = datetime.now(timezone.utc)
-        batch_duration = (
-            str(round((execution_end_time - execution_start_time).total_seconds(), 1))
-            + " seconds"
-        )
-
-        return {
-            "found": len(inventory),
-            "updated": len(supplier_data),
-            "updated_at": update_time,
-            "execution_duration": batch_duration,
-            "user_errors": user_errors,
-        }
+                return {
+                    "batch": logger_prefix.replace("[", "").replace("]", ""),
+                    "status": "failed",
+                    "retry_count": retry_count,
+                    "user_errors": {"exception": str(e)},
+                }
 
     async def _prepare_product_data(
         self, supplier: BaseSupplier

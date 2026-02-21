@@ -75,7 +75,12 @@ class ShopifyGraphQLClient:
                 data = response.json()
 
                 # Check for GraphQL errors
-                if "errors" in data:
+                if "errors" in data and data["errors"]:
+                    for error in data["errors"]:
+                        code = error.get("extensions", {}).get("code")
+                        if code == "THROTTLED":
+                            return data
+
                     self.logger.error(f"GraphQL errors: {data['errors']}")
                     raise ValueError(f"GraphQL query failed: {data['errors']}")
 
@@ -83,7 +88,7 @@ class ShopifyGraphQLClient:
 
         except httpx.HTTPError as e:
             self.logger.error(f"HTTP request failed: {str(e)}")
-            raise
+            raise ConnectionError(f"HTTP request failed: {str(e)}")
         except Exception as e:
             self.logger.error(f"GraphQL query failed: {str(e)}")
-            raise
+            raise ConnectionError(f"GraphQL query failed: {str(e)}")
