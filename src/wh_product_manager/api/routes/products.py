@@ -126,19 +126,14 @@ async def update_products(supplier: str, async_mode: bool = False) -> JSONRespon
 
         # TODO: Also implement updating of Shopify categories (not collections)!
 
-        if not async_mode:
-            result = await services.product_service.update_products_for_supplier(
-                supplier_obj
-            )
-        else:
-            result = await services.product_service.update_products_for_supplier__async(
-                supplier_obj
-            )
+        update_result = await services.product_service.update_products_for_supplier(
+            supplier_obj
+        )
 
         return JSONResponse(
             status_code=200,
             content={
                 "status": f"Supplier '{supplier}' found, product update finished",
-                "result": result,
+                "result": update_result,
             },
         )
