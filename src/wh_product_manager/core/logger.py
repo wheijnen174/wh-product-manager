@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from wh_product_manager.utils.data_loader import get_log_file
+from wh_product_manager.utils.data_loader import get_assets_dir
 
 
 class Logger:
@@ -41,7 +41,7 @@ class Logger:
             log_dir: Directory for log files (default: None, console only)
         """
         self.name = name
-        self.log_dir = get_log_file().parent
+        self.log_dir = get_assets_dir() / "logs"
 
         # Create base logger
         self.logger = logging.getLogger(name)

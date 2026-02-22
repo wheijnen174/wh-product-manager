@@ -22,7 +22,6 @@ from wh_product_manager.shopify.publishing import PublicationService
 from wh_product_manager.suppliers.base import BaseSupplier
 from wh_product_manager.suppliers.schemas import UnifiedProduct
 from wh_product_manager.suppliers.service import SupplierService
-from wh_product_manager.utils.data_loader import add_csv_line, save_json
 
 
 class ProductService:
@@ -261,11 +260,6 @@ class ProductService:
             if batch["user_errors"] != {}
         }
 
-        save_json(
-            f"async_results_{execution_start_time.strftime('%Y%m%d_%H%M%S')}.json",
-            results,
-        )
-
         execution_end_time = datetime.now(timezone.utc)
         batch_duration_minutes = round(
             (execution_end_time - execution_start_time).total_seconds() / 60, 1
@@ -281,23 +275,12 @@ class ProductService:
         total_retries = sum(batch["retry_count"] for batch in results)
         self.logger.info(f"Total retries due to throttling: {total_retries}")
 
-        add_csv_line(
-            "async_results_comparison.csv",
-            {
-                "type": "async",
-                "batch_size": self.batch_size_async,
-                "semaphore": self.concurrent_batches,
-                "minutes": batch_duration_minutes,
-                "seconds": batch_duration_seconds,
-                "retries": total_retries,
-            },
-        )
-
         return {
             "found": len(inventory),
             "updated": len(supplier_data),
             "updated_at": update_time,
             "execution_duration_minutes": batch_duration_minutes,
+            "retries": total_retries,
             "user_errors": user_errors,
         }
 
