@@ -101,7 +101,7 @@ async def create_products(
 
 
 @router.get("/update")
-async def update_products(supplier: str, async_mode: bool = False) -> JSONResponse:
+async def update_products(supplier: str) -> JSONResponse:
     """Endpoint to trigger product update for a supplier"""
     services = _get_services()
     supplier_exists = await services.supplier_service.supplier_exists(supplier)
