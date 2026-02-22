@@ -67,8 +67,8 @@ class ProductService:
         self.product_update = ProductUpdate(shopify_client, logger)
 
         self.batch_size_sync = 75
-        self.batch_size_async = 30
-        self.concurrent_batches = 3
+        self.batch_size_async = 5
+        self.concurrent_batches = 2
         self.semaphore = asyncio.Semaphore(self.concurrent_batches)
 
     async def create_products_for_supplier(
@@ -355,95 +355,84 @@ class ProductService:
         # Prepare batches
         self.logger.info("Preparing mutation batches.")
 
-        for sema_num in range(2, 5):
-            for batch_size in range(5, 55, 5):
-                print(
-                    f"\n\nStarting trial:\n\tSemaphore: {sema_num}\n\tBatch size: {batch_size}\n\n"
-                )
+        # batch_size = self.batch_size_async
+        batches: list[str] = []
 
-                trial_semaphore = asyncio.Semaphore(sema_num)
+        for i in range(0, len(mutation_items), self.batch_size_async):
+            batch = mutation_items[i : i + self.batch_size_async]
 
-                # batch_size = self.batch_size_async
-                batches: list[str] = []
+            mutation = f"""
+                mutation {{
+                    {chr(10).join(batch)}
 
-                for i in range(0, len(mutation_items), batch_size):
-                    batch = mutation_items[i : i + batch_size]
+                }}
+            """
 
-                    mutation = f"""
-                        mutation {{
-                            {chr(10).join(batch)}
+            batches.append(mutation)
 
-                        }}
-                    """
+        # Execute batches
+        self.logger.info(f"Executing {len(batches)} mutation batches.")
 
-                    batches.append(mutation)
+        execution_start_time = datetime.now(timezone.utc)
 
-                # Execute batches
-                self.logger.info(f"Executing {len(batches)} mutation batches.")
+        zerofill = len(str(len(batches)))
+        num_of_batches = len(batches)
 
-                execution_start_time = datetime.now(timezone.utc)
+        tasks = [
+            self._execute_product_update_batch(batch, idx, zerofill, num_of_batches)
+            for idx, batch in enumerate(batches)
+        ]
 
-                zerofill = len(str(len(batches)))
-                num_of_batches = len(batches)
+        results = await asyncio.gather(*tasks, return_exceptions=False)
 
-                tasks = [
-                    self._execute_product_update_batch(
-                        batch, idx, zerofill, num_of_batches, trial_semaphore
-                    )
-                    for idx, batch in enumerate(batches)
-                ]
+        user_errors: dict[str, Any] = {  # noqa: F841 # type: ignore
+            batch["batch"]: {
+                "status": batch["status"],
+                "user_errors": batch["user_errors"],
+            }
+            for batch in results
+            if batch["user_errors"] != {}
+        }
 
-                results = await asyncio.gather(*tasks, return_exceptions=False)
+        save_json(
+            f"async_results_{execution_start_time.strftime('%Y%m%d_%H%M%S')}.json",
+            results,
+        )
 
-                user_errors: dict[str, Any] = {  # noqa: F841 # type: ignore
-                    batch["batch"]: {
-                        "status": batch["status"],
-                        "user_errors": batch["user_errors"],
-                    }
-                    for batch in results
-                    if batch["user_errors"] != {}
-                }
+        execution_end_time = datetime.now(timezone.utc)
+        batch_duration_minutes = round(
+            (execution_end_time - execution_start_time).total_seconds() / 60, 1
+        )
+        batch_duration_seconds = round(
+            (execution_end_time - execution_start_time).total_seconds(), 1
+        )
 
-                save_json(
-                    f"async_results_{execution_start_time.strftime('%Y%m%d_%H%M%S')}.json",
-                    results,
-                )
+        self.logger.info(
+            f"Finished async executing {len(batches)} mutation batches in {batch_duration_minutes} minutes ({batch_duration_seconds} seconds)."
+        )
 
-                execution_end_time = datetime.now(timezone.utc)
-                batch_duration_minutes = round(
-                    (execution_end_time - execution_start_time).total_seconds() / 60, 1
-                )
-                batch_duration_seconds = round(
-                    (execution_end_time - execution_start_time).total_seconds(), 1
-                )
+        total_retries = sum(batch["retry_count"] for batch in results)
+        self.logger.info(f"Total retries due to throttling: {total_retries}")
 
-                self.logger.info(
-                    f"Finished async executing {len(batches)} mutation batches in {batch_duration_minutes} minutes ({batch_duration_seconds} seconds)."
-                )
+        add_csv_line(
+            "async_results_comparison.csv",
+            {
+                "type": "async",
+                "batch_size": self.batch_size_async,
+                "semaphore": self.concurrent_batches,
+                "minutes": batch_duration_minutes,
+                "seconds": batch_duration_seconds,
+                "retries": total_retries,
+            },
+        )
 
-                total_retries = sum(batch["retry_count"] for batch in results)
-                self.logger.info(f"Total retries due to throttling: {total_retries}")
-
-                add_csv_line(
-                    "async_results_comparison.csv",
-                    {
-                        "type": "async",
-                        "batch_size": batch_size,
-                        "semaphore": sema_num,
-                        "minutes": batch_duration_minutes,
-                        "seconds": batch_duration_seconds,
-                        "retries": total_retries,
-                    },
-                )
-
-        return {}
-        # return {
-        #     "found": len(inventory),
-        #     "updated": len(supplier_data),
-        #     "updated_at": update_time,
-        #     "execution_duration_minutes": batch_duration_minutes,
-        #     "user_errors": user_errors,
-        # }
+        return {
+            "found": len(inventory),
+            "updated": len(supplier_data),
+            "updated_at": update_time,
+            "execution_duration_minutes": batch_duration_minutes,
+            "user_errors": user_errors,
+        }
 
     async def _execute_product_update_batch(
         self,
@@ -451,9 +440,8 @@ class ProductService:
         idx: int,
         zerofill: int,
         num_of_batches: int,
-        trial_semaphore: asyncio.Semaphore,
     ) -> dict[str, Any]:
-        async with trial_semaphore:
+        async with self.semaphore:
             logger_prefix = f"[Batch {str(idx + 1).zfill(zerofill)}/{num_of_batches}]"
             retry_count = 0
 
