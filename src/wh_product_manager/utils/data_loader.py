@@ -10,9 +10,9 @@ from pathlib import Path
 from typing import Any
 
 
-def get_assets_dir() -> Path:
+def get_data_dir() -> Path:
     """
-    Get the assets directory path
+    Get the data directory path
     Works for both development and compiled EXE
     """
     file_ext = Path(sys.argv[0]).suffix
@@ -22,30 +22,30 @@ def get_assets_dir() -> Path:
         # EXE is in: dist/WH-Product-Manager.exe
         # Data is in: dist/assets/
         exe_dir = Path(sys.argv[0]).parent
-        data_dir = exe_dir / "assets"
+        data_dir = exe_dir / "data"
     else:
         # Running as Python script
         # Script is in: src/wh_product_manager/
         # Data is in: assets/ (at project root)
         project_root = Path(__file__).parent.parent.parent.parent
-        data_dir = project_root / "assets"
+        data_dir = project_root / "data"
 
     if not data_dir.exists():
         raise FileNotFoundError(
-            f"Assets directory not found at {data_dir}\n"
-            f"Make sure 'assets/' folder exists next to the EXE or at project root"
+            f"Data directory not found at {data_dir}\n"
+            f"Make sure 'data/' folder exists next to the EXE or at project root"
         )
 
     return data_dir
 
 
 def load_json(filename: str) -> dict[Any, Any] | list[Any]:
-    """Load a JSON file from the assets directory"""
-    data_dir = get_assets_dir()
+    """Load a JSON file from the data directory"""
+    data_dir = get_data_dir()
     filepath = data_dir / filename
 
     if not filepath.exists():
-        raise FileNotFoundError(f"Assets file not found: {filepath}")
+        raise FileNotFoundError(f"Data file not found: {filepath}")
 
     with open(filepath, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -57,8 +57,8 @@ def save_json(
     sort_on_keys: bool = False,
     indent: bool = False,
 ) -> None:
-    """Save a JSON file to the assets directory"""
-    data_dir = get_assets_dir()
+    """Save a JSON file to the data directory"""
+    data_dir = get_data_dir()
     filepath = data_dir / filename
 
     if sort_on_keys and isinstance(data, dict):
@@ -70,7 +70,7 @@ def save_json(
 
 def load_csv(filename: str) -> list[dict[Any, Any]]:
     """Load a CSV file from the assets directory"""
-    data_dir = get_assets_dir()
+    data_dir = get_data_dir()
     filepath = data_dir / filename
 
     if not filepath.exists():
@@ -83,7 +83,7 @@ def load_csv(filename: str) -> list[dict[Any, Any]]:
 
 def save_csv(filename: str, data: list[dict[Any, Any]]) -> None:
     """Save a CSV file to the assets directory"""
-    data_dir = get_assets_dir()
+    data_dir = get_data_dir()
     filepath = data_dir / filename
 
     if not filepath.exists():
@@ -97,7 +97,7 @@ def save_csv(filename: str, data: list[dict[Any, Any]]) -> None:
 
 def add_csv_line(filename: str, data: dict[Any, Any]) -> None:
     """Add a line to a CSV file in the assets directory"""
-    data_dir = get_assets_dir()
+    data_dir = get_data_dir()
     filepath = data_dir / filename
 
     if not filepath.exists():
@@ -110,7 +110,7 @@ def add_csv_line(filename: str, data: dict[Any, Any]) -> None:
 
 def save_txt(filename: str, data: str) -> None:
     """Save a text file to the assets directory"""
-    data_dir = get_assets_dir()
+    data_dir = get_data_dir()
     filepath = data_dir / filename
 
     with open(filepath, "w+", encoding="utf-8") as f:
@@ -119,5 +119,5 @@ def save_txt(filename: str, data: str) -> None:
 
 def get_log_file() -> Path:
     """Get the path to app.log"""
-    data_dir = get_assets_dir()
+    data_dir = get_data_dir()
     return data_dir / "app.log"

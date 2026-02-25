@@ -3,8 +3,18 @@ Dependency injection container
 Initializes and manages all services
 """
 
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+
 from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
+from wh_product_manager.db.repositories.country_mapping_repo import (
+    CountryMappingRepository,
+)
 from wh_product_manager.shopify.categories import CategoriesService
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
 from wh_product_manager.shopify.inventory import InventoryService
@@ -32,6 +42,27 @@ class Services:
         self.settings = settings
         self.logger = Logger(level=settings.LOG_LEVEL)
 
+        self.db_engine: AsyncEngine = create_async_engine(
+            settings.get_database_url(),
+            echo=getattr(settings, "DB_ECHO", False),
+            pool_pre_ping=True,
+        )
+
+        self.session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(
+            bind=self.db_engine,
+            expire_on_commit=False,
+            autoflush=False,
+            autocommit=False,
+        )
+
+        # ------------------------------------------------------------------------------
+        # DATABASE SERVICES
+        # ------------------------------------------------------------------------------
+        self.country_mapping_repo = CountryMappingRepository(self.session_factory)
+
+        # ------------------------------------------------------------------------------
+        # SHOPIFY SERVICES
+        # ------------------------------------------------------------------------------
         self.shopify_client = ShopifyGraphQLClient(settings, self.logger)
 
         self.publication_service = PublicationService(self.shopify_client, self.logger)
@@ -76,3 +107,8 @@ class Services:
         )
 
         self.logger.info("Services Container initialized with all services")
+
+    async def aclose(self) -> None:
+        """Gracefully close resources (db, etc.)."""
+        # Dispose SQLAlchemy engine (closes pool connections)
+        await self.db_engine.dispose()

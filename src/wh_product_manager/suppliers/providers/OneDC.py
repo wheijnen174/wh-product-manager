@@ -55,9 +55,9 @@ class Supplier_OneDC(BaseSupplier):
         """
         try:
             # # Offline data for testing purposes
-            # from wh_product_manager.utils.data_loader import get_assets_dir
+            # from wh_product_manager.utils.data_loader import get_data_dir
 
-            # assets_dir = get_assets_dir()
+            # assets_dir = get_data_dir()
             # with open(
             #     assets_dir / "onedc_product_data_20260210.xml", "r", encoding="utf-8"
             # ) as file:

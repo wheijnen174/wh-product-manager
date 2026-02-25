@@ -3,7 +3,7 @@ Suppliers helpers module
 """
 
 from wh_product_manager.core.logger import Logger
-from wh_product_manager.utils.data_loader import load_json
+from wh_product_manager.main import get_services
 from wh_product_manager.utils.formatters import normalize_string
 
 
@@ -13,7 +13,7 @@ class CountrynameConversion:
     """
 
     @staticmethod
-    def map_name_to_iso(
+    async def map_name_to_iso(
         logger: Logger, input_lang: str | None = None
     ) -> dict[str, str]:
         """
@@ -36,7 +36,11 @@ class CountrynameConversion:
                 f"Preparing country conversion map 'name_to_iso' for input language '{input_lang}'."
             )
 
-        conversion_map = load_json("country_mappings.json")
+        services = get_services()
+        name = await services.country_mapping_repo.get_name("AD", "en")
+
+        print(name)
+        raise NotImplementedError("This method is not implemented yet.")
 
         prepared_map: dict[str, str] = {}
 
@@ -62,7 +66,7 @@ class CountrynameConversion:
         return prepared_map
 
     @staticmethod
-    def map_iso_to_name(logger: Logger, input_lang: str) -> dict[str, str]:
+    async def map_iso_to_name(logger: Logger, input_lang: str) -> dict[str, str]:
         """
         Prepare a mapping of ISO codes to country names for a specific input language.
 
@@ -78,7 +82,11 @@ class CountrynameConversion:
             f"Preparing country conversion map 'iso_to_name' for input language '{input_lang}'."
         )
 
-        conversion_map = load_json("country_mappings.json")
+        services = get_services()
+        name = await services.country_mapping_repo.get_name("AD", "en")
+
+        print(name)
+        raise NotImplementedError("This method is not implemented yet.")
 
         prepared_map: dict[str, str | list[str]] = {
             code.lower(): values.get(input_lang, "")

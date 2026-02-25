@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from wh_product_manager.config import Settings
+from wh_product_manager.db.init_db import create_tables
 from wh_product_manager.services import Services
 
 # Global container for dependency injection
@@ -55,11 +56,17 @@ def create_app(app_settings: Settings) -> FastAPI:
         # Startup - create Services with passed settings
         services = Services(app_settings)
 
-        yield
+        # Create database tables
+        await create_tables(services.db_engine)
 
-        # Shutdown
-        if services:
-            services.logger.info("Application shutdown")
+        try:
+            yield
+        finally:
+            # Shutdown
+            if services:
+                services.logger.info("Application shutdown")
+
+                await services.aclose()
 
     app = FastAPI(
         title="WH Product Manager",

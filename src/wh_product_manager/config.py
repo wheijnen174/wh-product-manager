@@ -27,6 +27,14 @@ class Settings(BaseSettings):
     ENABLE_CORS: bool = False
     CORS_ORIGINS: list[str] = []
 
+    # Database
+    DB_HOST: str
+    DB_PORT: int
+    DB_NAME: str
+    DB_USERNAME: str
+    DB_PASSWORD: str
+    DB_ECHO: bool = False
+
     # Shopify
     SHOPIFY_SHOP_URL: str = ""
     SHOPIFY_API_VERSION: str = "2026-01"
@@ -69,6 +77,10 @@ class Settings(BaseSettings):
                 "SHOPIFY_ACCESS_TOKEN must be either in '.env.shopify-token' file "
                 "or in .env file as SHOPIFY_ACCESS_TOKEN"
             )
+
+    def get_database_url(self) -> str:
+        """Construct the database URL from individual components"""
+        return f"mysql+asyncmy://{self.DB_USERNAME}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
 
 
 def get_settings() -> Settings:
