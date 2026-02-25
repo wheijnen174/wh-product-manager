@@ -78,7 +78,7 @@ class Logger:
 
         # Standard formatter for file (no colors)
         file_formatter = logging.Formatter(
-            fmt="%(asctime)s - %(levelname)s - %(module)s - %(funcName)s - %(message)s",
+            fmt="%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
         file_handler.setFormatter(file_formatter)
