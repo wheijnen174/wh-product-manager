@@ -7,7 +7,7 @@ from typing import Any
 
 from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
-from wh_product_manager.db.models.country_mapping import CountryMappingRepository
+from wh_product_manager.db.repositories.country_mapping import CountryMappingRepository
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
 from wh_product_manager.suppliers.base import BaseSupplier
 from wh_product_manager.suppliers.providers.OneDC import Supplier_OneDC

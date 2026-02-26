@@ -8,7 +8,7 @@ from typing import Any
 
 from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
-from wh_product_manager.db.models.country_mapping import (
+from wh_product_manager.db.repositories.country_mapping import (
     CountryMappingRepository,
 )
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
@@ -103,13 +103,3 @@ class BaseSupplier(ABC):
                 error=str(e),
                 item_count=0,
             )
-
-    @abstractmethod
-    async def validate_connection(self) -> bool:
-        """
-        Validate connection to supplier
-
-        Returns:
-            bool: True if connected successfully
-        """
-        pass

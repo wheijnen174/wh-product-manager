@@ -24,22 +24,6 @@ from wh_product_manager.utils.formatters import (
 class Supplier_OneDC(BaseSupplier):
     """Supplier implementation for Provider 1"""
 
-    async def validate_connection(self) -> bool:
-        """
-        Validate connection to Provider 1
-
-        Returns:
-            bool: True if connected
-        """
-        try:
-            self.logger.info("Supplier_OneDC - Validating connection...")
-            # TODO: Add your connection validation logic
-            # Example: Test API call, database connection, etc.
-            return True
-        except Exception as e:
-            self.logger.error(f"Supplier_OneDC - Connection failed: {str(e)}")
-            return False
-
     async def fetch_raw_data(self) -> dict[str, Any]:
         """
         Fetch raw data from Provider 1
@@ -54,9 +38,9 @@ class Supplier_OneDC(BaseSupplier):
             # # Offline data for testing purposes
             # from wh_product_manager.utils.data_loader import get_data_dir
 
-            # assets_dir = get_data_dir()
+            # data_dir = get_data_dir()
             # with open(
-            #     assets_dir / "onedc_product_data_20260210.xml", "r", encoding="utf-8"
+            #     data_dir / "onedc_product_data_20260210.xml", "r", encoding="utf-8"
             # ) as file:
             #     xml_content = file.read()
 
@@ -103,7 +87,8 @@ class Supplier_OneDC(BaseSupplier):
 
         for product in raw_data.get("products", {}).get("product", []):
             try:
-                # Set values for common fields for all variants
+                valid_product = True
+
                 price = float(product.get("prices").get("recommended_retail_price"))
                 cost = float(product.get("prices").get("b2b_price"))
                 weight = product.get("weight")
@@ -143,6 +128,14 @@ class Supplier_OneDC(BaseSupplier):
                 )
                 if isinstance(variants_raw, dict):
                     variants_raw = [variants_raw]  # Convert single variant to list
+
+                if len(variants_raw) > 1 and set(
+                    item.get("size_title") for item in variants_raw
+                ) == {None}:
+                    valid_product = False
+                    self.logger.debug(
+                        f"{self.name} - Product '{product.get('head_article_number')}' has multiple variants but no size titles, skipping product"
+                    )
 
                 variants: list[UnifiedVariant] = []
                 for item in variants_raw:
@@ -192,7 +185,10 @@ class Supplier_OneDC(BaseSupplier):
                     properties=self.transform_product_properties(product),
                 )
 
-                unified_products[product.get("head_article_number")] = unified_product
+                if valid_product:
+                    unified_products[product.get("head_article_number")] = (
+                        unified_product
+                    )
 
             except Exception as e:
                 self.logger.error(
