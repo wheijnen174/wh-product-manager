@@ -8,6 +8,9 @@ from typing import Any
 
 from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
+from wh_product_manager.db.models.country_mapping import (
+    CountryMappingRepository,
+)
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
 from wh_product_manager.suppliers.schemas import (
     SupplierDataResult,
@@ -24,6 +27,7 @@ class BaseSupplier(ABC):
         shopify_client: ShopifyGraphQLClient,
         settings: Settings,
         logger: Logger,
+        country_mapping_repo: CountryMappingRepository,
     ):
         """
         Initialize supplier
@@ -33,11 +37,13 @@ class BaseSupplier(ABC):
             shopify_client: ShopifyGraphQLClient instance
             settings: Application settings
             logger: Logger instance
+            country_mapping_repo: CountryMappingRepository instance
         """
+        self.name = name
         self.shopify_client = shopify_client
         self.settings = settings
         self.logger = logger
-        self.name = name
+        self.country_mapping_repo = country_mapping_repo
 
     @abstractmethod
     async def fetch_raw_data(self) -> dict[str, Any]:
@@ -50,7 +56,9 @@ class BaseSupplier(ABC):
         pass
 
     @abstractmethod
-    def transform_data(self, raw_data: dict[str, Any]) -> dict[str, UnifiedProduct]:
+    async def transform_data(
+        self, raw_data: dict[str, Any]
+    ) -> dict[str, UnifiedProduct]:
         """
         Transform raw supplier data to unified format
 
@@ -74,7 +82,7 @@ class BaseSupplier(ABC):
             raw_data = await self.fetch_raw_data()
 
             self.logger.info(f"{self.name} - Transforming data to unified format...")
-            products = self.transform_data(raw_data)
+            products = await self.transform_data(raw_data)
 
             self.logger.info(
                 f"{self.name} - Successfully fetched and transformed {len(products)} products"

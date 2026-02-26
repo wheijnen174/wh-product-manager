@@ -3,10 +3,13 @@ from typing import Any
 
 from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
+from wh_product_manager.db.models.collections import CollectionsRepository
+from wh_product_manager.db.models.shopify_category_taxonomies import (
+    ShopifyCategoryTaxonomiesRepository,
+)
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
 from wh_product_manager.shopify.publishing import PublicationService
 from wh_product_manager.suppliers.schemas import UnifiedProduct
-from wh_product_manager.utils.data_loader import load_json, save_json
 
 
 class CategoriesService:
@@ -16,11 +19,15 @@ class CategoriesService:
         settings: Settings,
         logger: Logger,
         publication_service: PublicationService,
+        shopify_category_taxonomies_repo: ShopifyCategoryTaxonomiesRepository,
+        collections_repo: CollectionsRepository,
     ):
         self.shopify_client = shopify_client
         self.settings = settings
         self.logger = logger
         self.publication_service = publication_service
+        self.shopify_category_taxonomies_repo = shopify_category_taxonomies_repo
+        self.collections_repo = collections_repo
 
     async def get_product_categories(
         self, products: dict[str, UnifiedProduct]
@@ -248,17 +255,13 @@ class CategoriesService:
         return details
 
     async def _load_categories_file(self) -> dict[str, dict[str, str | int | None]]:
-        data = load_json("collections.json")
-        if isinstance(data, dict):
-            return data
-        return {}
+        data = await self.collections_repo.get_all()
+        return data
 
     async def _save_categories_file(
         self, data: dict[str, dict[str, str | int | None]]
     ) -> None:
-        save_json(
-            filename="collections.json", data=data, sort_on_keys=True, indent=False
-        )
+        await self.collections_repo.save_all(data)
 
     async def get_category_constraints(self, product_type: str) -> list[str]:
         """
@@ -272,7 +275,7 @@ class CategoriesService:
             list[str]: A list of category constraints for product metafields.
         """
         if product_type == "product":
-            taxonomies = await self.get_shopify_category_taxonomies()
+            taxonomies = await self.shopify_category_taxonomies_repo.get_all()
 
             taxonomies.remove("ae-1")  # Remove event category from product constraints
 
@@ -284,22 +287,6 @@ class CategoriesService:
         else:
             raise ValueError(
                 f"Invalid category constraint type: {product_type}. Must be 'product' or 'event'."
-            )
-
-    @staticmethod
-    async def get_shopify_category_taxonomies() -> list[str]:
-        try:
-            data = load_json("shopify_category_taxonomies.json")
-        except FileNotFoundError:
-            raise Exception(
-                "Shopify category taxonomies file not found. Make sure the file 'shopify_category_taxonomies.json' exists and contains the necessary taxonomies in list format."
-            )
-
-        if isinstance(data, list):
-            return data
-        else:
-            raise Exception(
-                "Shopify category taxonomies file is not in the expected format (list of strings). Check the file content for file 'shopify_category_taxonomies.json'"
             )
 
     @staticmethod

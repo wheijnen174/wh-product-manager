@@ -9,9 +9,6 @@ import httpx
 import xmltodict
 
 from wh_product_manager.suppliers.base import BaseSupplier
-from wh_product_manager.suppliers.helpers.countryname_conversion import (
-    CountrynameConversion,
-)
 from wh_product_manager.suppliers.schemas import (
     UnifiedProduct,
     UnifiedProperty,
@@ -85,7 +82,9 @@ class Supplier_OneDC(BaseSupplier):
             self.logger.error(f"Failed to fetch raw data from One-DC: {str(e)}")
             raise
 
-    def transform_data(self, raw_data: dict[str, Any]) -> dict[str, UnifiedProduct]:
+    async def transform_data(
+        self, raw_data: dict[str, Any]
+    ) -> dict[str, UnifiedProduct]:
         """
         Transform Supplier One-DC's native format to unified format
 
@@ -96,7 +95,9 @@ class Supplier_OneDC(BaseSupplier):
             dict[str, UnifiedProduct]: Transformed products where key is parent SKU
         """
 
-        conversion_map = CountrynameConversion.map_name_to_iso(self.logger)
+        conversion_map: dict[
+            str, str
+        ] = await self.country_mapping_repo.map_name_to_iso()
 
         unified_products: dict[str, UnifiedProduct] = {}
 

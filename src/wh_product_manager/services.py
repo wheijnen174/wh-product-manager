@@ -12,8 +12,12 @@ from sqlalchemy.ext.asyncio import (
 
 from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
-from wh_product_manager.db.repositories.country_mapping_repo import (
+from wh_product_manager.db.models.collections import CollectionsRepository
+from wh_product_manager.db.models.country_mapping import (
     CountryMappingRepository,
+)
+from wh_product_manager.db.models.shopify_category_taxonomies import (
+    ShopifyCategoryTaxonomiesRepository,
 )
 from wh_product_manager.shopify.categories import CategoriesService
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
@@ -58,7 +62,11 @@ class Services:
         # ------------------------------------------------------------------------------
         # DATABASE SERVICES
         # ------------------------------------------------------------------------------
+        self.collections_repo = CollectionsRepository(self.session_factory)
         self.country_mapping_repo = CountryMappingRepository(self.session_factory)
+        self.shopify_category_taxonomies_repo = ShopifyCategoryTaxonomiesRepository(
+            self.session_factory
+        )
 
         # ------------------------------------------------------------------------------
         # SHOPIFY SERVICES
@@ -72,11 +80,16 @@ class Services:
         )
 
         self.supplier_service = SupplierService(
-            self.shopify_client, settings, self.logger
+            self.shopify_client, settings, self.logger, self.country_mapping_repo
         )
 
         self.categories_service = CategoriesService(
-            self.shopify_client, settings, self.logger, self.publication_service
+            self.shopify_client,
+            settings,
+            self.logger,
+            self.publication_service,
+            self.shopify_category_taxonomies_repo,
+            self.collections_repo,
         )
 
         self.metafield_service = MetafieldService(

@@ -7,6 +7,7 @@ from typing import Any
 
 from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
+from wh_product_manager.db.models.country_mapping import CountryMappingRepository
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
 from wh_product_manager.suppliers.base import BaseSupplier
 from wh_product_manager.suppliers.providers.OneDC import Supplier_OneDC
@@ -24,6 +25,7 @@ class SupplierService:
         shopify_client: ShopifyGraphQLClient,
         settings: Settings,
         logger: Logger,
+        country_mapping_repo: CountryMappingRepository,
     ):
         """
         Initialize supplier service
@@ -32,10 +34,13 @@ class SupplierService:
             shopify_client: ShopifyGraphQLClient instance
             settings: Application settings
             logger: Logger instance
+            country_mapping_repo: CountryMappingRepository instance
         """
+
         self.shopify_client = shopify_client
         self.settings = settings
         self.logger = logger
+        self.country_mapping_repo = country_mapping_repo
 
         self.suppliers: dict[str, BaseSupplier] = {
             "one-dc": Supplier_OneDC(
@@ -43,6 +48,7 @@ class SupplierService:
                 shopify_client=self.shopify_client,
                 settings=self.settings,
                 logger=self.logger,
+                country_mapping_repo=self.country_mapping_repo,
             ),
         }
 
