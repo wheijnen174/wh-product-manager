@@ -46,19 +46,18 @@ class Logger:
         # Create base logger
         self.logger = logging.getLogger(name)
 
-        # Set logging level
-        log_level = getattr(logging, level.upper(), logging.INFO)
-        self.logger.setLevel(log_level)
+        # Set logging level to DEBUG to capture all levels, handlers will filter as needed
+        self.logger.setLevel(logging.DEBUG)
 
         # Remove existing handlers to avoid duplicates
         self.logger.handlers.clear()
 
         # File handler if log_dir specified
         if self.log_dir:
-            self._add_file_handler(0, self.log_dir)
+            self._add_file_handler(logging.DEBUG, self.log_dir)
 
         # Console handler with colors
-        self._add_console_handler(log_level)
+        self._add_console_handler(logging.WARNING)
 
     def _add_file_handler(self, level: int, log_dir: Path) -> None:
         """
@@ -78,7 +77,7 @@ class Logger:
 
         # Standard formatter for file (no colors)
         file_formatter = logging.Formatter(
-            fmt="%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s",
+            fmt="%(asctime)s - %(levelname)s - %(funcName)s - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
         file_handler.setFormatter(file_formatter)

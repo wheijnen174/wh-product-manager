@@ -26,6 +26,8 @@ async def status() -> JSONResponse:
             },
         )
 
+    services.logger.debug("Health check endpoint accessed - API is running")
+
     return JSONResponse(
         status_code=200,
         content={

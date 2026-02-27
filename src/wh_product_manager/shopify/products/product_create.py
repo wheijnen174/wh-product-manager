@@ -66,7 +66,6 @@ class ProductCreate:
             product.title: {
                 "product_id": product_id,
                 "variant_ids": variant_ids,
-                # "response": response,
             }
         }
 
@@ -110,6 +109,5 @@ class ProductCreate:
             product.title: {
                 "product_id": product_id,
                 "variant_ids": variant_ids,
-                # "response": response,
             }
         }

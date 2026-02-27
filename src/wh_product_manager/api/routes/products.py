@@ -67,7 +67,7 @@ async def create_products(
         )
 
     services = _get_services()
-    supplier_exists = await services.supplier_service.supplier_exists(supplier)
+    supplier_exists = await services.supplier_service.supplier_exists(supplier.lower())
 
     if not supplier_exists:
         return JSONResponse(
@@ -78,14 +78,14 @@ async def create_products(
                         "type": "invalid",
                         "loc": ["query", "supplier"],
                         "msg": "Supplier not found",
-                        "input": supplier,
+                        "input": supplier.lower(),
                     }
                 ]
             },
         )
 
     async with product_operation_lock:
-        supplier_obj = await services.supplier_service.get_supplier(supplier)
+        supplier_obj = await services.supplier_service.get_supplier(supplier.lower())
 
         result = await services.product_service.create_products_for_supplier(
             supplier_obj, new_products_limit
@@ -94,7 +94,7 @@ async def create_products(
         return JSONResponse(
             status_code=200,
             content={
-                "status": f"Supplier '{supplier}' found, product creation finished",
+                "status": f"Supplier '{supplier.lower()}' found, product creation finished",
                 "result": result,
             },
         )
@@ -104,7 +104,7 @@ async def create_products(
 async def update_products(supplier: str) -> JSONResponse:
     """Endpoint to trigger product update for a supplier"""
     services = _get_services()
-    supplier_exists = await services.supplier_service.supplier_exists(supplier)
+    supplier_exists = await services.supplier_service.supplier_exists(supplier.lower())
 
     if not supplier_exists:
         return JSONResponse(
@@ -115,14 +115,14 @@ async def update_products(supplier: str) -> JSONResponse:
                         "type": "invalid",
                         "loc": ["query", "supplier"],
                         "msg": "Supplier not found",
-                        "input": supplier,
+                        "input": supplier.lower(),
                     }
                 ]
             },
         )
 
     async with product_operation_lock:
-        supplier_obj = await services.supplier_service.get_supplier(supplier)
+        supplier_obj = await services.supplier_service.get_supplier(supplier.lower())
 
         # TODO: Also implement updating of Shopify categories (not collections)!
 
@@ -133,7 +133,7 @@ async def update_products(supplier: str) -> JSONResponse:
         return JSONResponse(
             status_code=200,
             content={
-                "status": f"Supplier '{supplier}' found, product update finished",
+                "status": f"Supplier '{supplier.lower()}' found, product update finished",
                 "result": update_result,
             },
         )
