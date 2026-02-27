@@ -45,7 +45,9 @@ class Services:
             settings: Application settings
         """
         self.settings = settings
-        self.logger = Logger(level=settings.LOG_LEVEL)
+        self.logger = Logger(
+            level_file=settings.LOG_LEVEL_FILE, level_console=settings.LOG_LEVEL_CONSOLE
+        )
 
         self.db_engine: AsyncEngine = create_async_engine(
             settings.get_database_url(),

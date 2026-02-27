@@ -304,7 +304,7 @@ class UnifiedProduct:
                 "contentType": "IMAGE",
                 "filename": slugify(self.title + " - " + str(i + 1).zfill(2))
                 + Path(urlparse(url).path).suffix,
-                "originalSource": urlparse(url).geturl(),
+                "originalSource": urlparse(url).geturl().replace(" ", "%20"),
             }
             for i, url in enumerate(self.images or [])
         ]

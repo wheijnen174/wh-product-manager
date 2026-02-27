@@ -3,8 +3,10 @@ Logging utility for the application
 Provides consistent logging across all modules
 """
 
+import json
 import logging
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -30,15 +32,16 @@ class Logger:
     def __init__(
         self,
         name: str = "wh_product_manager",
-        level: str = "DEBUG",
+        level_console: str = "WARNING",
+        level_file: str = "INFO",
     ):
         """
         Initialize the logger
 
         Args:
             name: Logger name (default: wh_product_manager)
-            level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-            log_dir: Directory for log files (default: None, console only)
+            level_console: Logging level for console output (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            level_file: Logging level for file output (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         """
         self.name = name
         self.log_dir = get_data_dir() / "logs"
@@ -54,10 +57,12 @@ class Logger:
 
         # File handler if log_dir specified
         if self.log_dir:
-            self._add_file_handler(logging.DEBUG, self.log_dir)
+            level_file_int = getattr(logging, level_file.upper(), logging.INFO)
+            self._add_file_handler(level_file_int, self.log_dir)
 
         # Console handler with colors
-        self._add_console_handler(logging.WARNING)
+        level_console_int = getattr(logging, level_console.upper(), logging.WARNING)
+        self._add_console_handler(level_console_int)
 
     def _add_file_handler(self, level: int, log_dir: Path) -> None:
         """
@@ -132,6 +137,33 @@ class Logger:
         """Log an exception with full traceback"""
         kwargs.setdefault("stacklevel", 2)
         self.logger.exception(message, *args, **kwargs)
+
+    def log_query(
+        self, response: dict[str, Any], query: str, params: dict[str, Any] | None = None
+    ) -> None:
+        """Log a database query with parameters"""
+        log_dir = self.log_dir / "queries"
+        log_dir.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+
+        log_message: dict[str, Any] = {
+            "response": response,
+            "parameters": params,
+            "query": query,
+        }
+
+        # Try timestamp.log, then timestamp_1.log, timestamp_2.log, ...
+        i = 0
+        while True:
+            suffix = "" if i == 0 else f"_{i}"
+            log_file = log_dir / f"{timestamp}{suffix}.log"
+            try:
+                with open(log_file, "x", encoding="utf-8") as f:
+                    json.dump(log_message, f, ensure_ascii=False, indent=4)
+                break
+            except FileExistsError:
+                i += 1
 
 
 class _ConsoleFormatter(logging.Formatter):

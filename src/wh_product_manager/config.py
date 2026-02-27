@@ -20,7 +20,8 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # Logging
-    LOG_LEVEL: str = "INFO"
+    LOG_LEVEL_CONSOLE: str = "WARNING"
+    LOG_LEVEL_FILE: str = "INFO"
     LOG_FILE: str = str(get_log_file())
 
     # CORS (only needed if you have a web frontend)

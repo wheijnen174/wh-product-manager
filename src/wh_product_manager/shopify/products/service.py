@@ -66,7 +66,7 @@ class ProductService:
         self.product_update = ProductUpdate(shopify_client, logger)
 
         self.batch_size_sync = 75
-        self.batch_size_async = 5
+        self.batch_size_async = 7
         self.concurrent_batches = 2
         self.semaphore = asyncio.Semaphore(self.concurrent_batches)
 
@@ -204,6 +204,7 @@ class ProductService:
         self.logger.info(
             "Preparing update mutations for products that need to be updated."
         )
+
         mutation_items = await self.product_update.prepare_update_mutations(
             supplier.name, inventory, supplier_data, update_time
         )
@@ -221,7 +222,6 @@ class ProductService:
         # Prepare batches
         self.logger.info("Preparing mutation batches.")
 
-        # batch_size = self.batch_size_async
         batches: list[str] = []
 
         for i in range(0, len(mutation_items), self.batch_size_async):
@@ -304,7 +304,7 @@ class ProductService:
                     if "errors" not in response:
                         break
 
-                    self.logger.debug(
+                    self.logger.warning(
                         f"{logger_prefix} Shopify API request throttled. Retrying after delay..."
                     )
                     retry_count += 1

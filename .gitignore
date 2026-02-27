@@ -15,10 +15,12 @@ assets/not_used/
 assets/_debug_*
 assets/onedc_product_data_*.xml
 assets/async_results*
+assets/logs/
 data/not_used/
 data/_debug_*
 data/onedc_product_data_*.xml
 data/async_results*
+data/logs/
 
 # Nuitka build output
 dist/

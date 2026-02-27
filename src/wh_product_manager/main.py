@@ -130,6 +130,6 @@ if __name__ == "__main__":
         "wh_product_manager.main:app",
         host=settings.HOST,
         port=settings.PORT,
-        log_level=settings.LOG_LEVEL.lower(),
+        log_level=settings.LOG_LEVEL_CONSOLE.lower(),
         reload=settings.DEBUG,
     )

@@ -298,7 +298,7 @@ class ProductPropertiesService:
                     else None
                 )
 
-            processed_properties = {}
+            processed_properties: dict[str, str | list[str]] = {}
             if product.properties is not None:
                 for property_title, details in product.properties.items():
                     existing_property = all_properties.get(property_title) or None
@@ -333,6 +333,10 @@ class ProductPropertiesService:
 
                             if values is not None:
                                 processed_properties[name.lower()] = values
+
+            for name, values in processed_properties.items():
+                if isinstance(values, list):
+                    processed_properties[name] = list(set(values))
 
             product.extra_data["processed_properties"] = processed_properties
 

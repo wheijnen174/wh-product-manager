@@ -45,7 +45,7 @@ class ProductUpdate:
 
             # Product update mutation (keep track of product update time on a product level)
             mutation = f"""
-                    product_update_{idx + 1}: productUpdate(
+                    c_product_update_{idx + 1}: productUpdate(
                         product: {{
                             id: "{inventory_item["parent_id"]}",
                             metafields: [
@@ -113,7 +113,7 @@ class ProductUpdate:
                 # Add mutation to update the stock quantity. Updating quantities is not allowed in productVariantsBulkUpdate
                 idempotent_key = str(uuid4())
                 mutation = f"""
-                    product_variant_stock_{idx + 1}_{var_idx + 1}: inventorySetOnHandQuantities(
+                    a_product_variant_stock_{idx + 1}_{var_idx + 1}: inventorySetOnHandQuantities(
                         input: {{
                             reason: "correction",
                             setQuantities: [
@@ -135,7 +135,7 @@ class ProductUpdate:
             # Create productVariantsBulkUpdate mutation
             if len(productVariantsBulkUpdate) > 0:
                 mutation = f"""
-                    product_bulk_update_{idx + 1}: productVariantsBulkUpdate(
+                    b_product_bulk_update_{idx + 1}: productVariantsBulkUpdate(
                         allowPartialUpdates: true,
                         productId: "{inventory_item["parent_id"]}",
                         variants: [
@@ -149,4 +149,4 @@ class ProductUpdate:
                     }}"""
                 mutation_items.append(mutation)
 
-        return mutation_items
+        return sorted(mutation_items)
