@@ -1,9 +1,7 @@
-from sqlalchemy import (
-    select,
-)
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from wh_product_manager.db.models.products import Products, ProductsTexts
+from wh_product_manager.db.models.products import Products
 from wh_product_manager.db.session_utils import session_scope
 
 
@@ -33,68 +31,32 @@ class ProductsRepository:
             await session.flush()  # assigns product.id
             return product
 
-    async def upsert_text(
+    async def upsert_property(
         self,
         *,
         product_id: int,
         field: str,
         source: str,
         language: str,
-        text_value: str,
+        value: str,
     ) -> None:
-        """
-        Portable upsert approach using ORM:
-        - find existing row
-        - update or insert
-        (Later you can replace with MariaDB ON DUPLICATE KEY UPDATE for speed.)
-        """
-        f = field.strip().lower()
-        s = source.strip().lower()
-        lang = language.strip().lower()
+        stmt = text(
+            """
+                INSERT INTO products_properties (product_id, field, source, language, value)
+                VALUES (:product_id, :field, :source, :language, :value)
+                ON DUPLICATE KEY UPDATE
+                    value = VALUES(value)
+            """
+        )
 
         async with session_scope(self._session_factory) as session:
-            res = await session.execute(
-                select(ProductsTexts).where(
-                    ProductsTexts.product_id == product_id,
-                    ProductsTexts.field == f,
-                    ProductsTexts.source == s,
-                    ProductsTexts.language == lang,
-                )
+            await session.execute(
+                stmt,
+                {
+                    "product_id": product_id,
+                    "field": field,
+                    "source": source,
+                    "language": language,
+                    "value": value,
+                },
             )
-            row = res.scalar_one_or_none()
-
-            if row is None:
-                session.add(
-                    ProductsTexts(
-                        product_id=product_id,
-                        field=f,
-                        source=s,
-                        language=lang,
-                        text=text_value,
-                    )
-                )
-            else:
-                row.text = text_value
-
-    async def get_text(
-        self,
-        *,
-        product_id: int,
-        field: str,
-        source: str,
-        language: str,
-    ) -> str | None:
-        f = field.strip().lower()
-        s = source.strip().lower()
-        lang = language.strip().lower()
-
-        async with session_scope(self._session_factory) as session:
-            res = await session.execute(
-                select(ProductsTexts.text).where(
-                    ProductsTexts.product_id == product_id,
-                    ProductsTexts.field == f,
-                    ProductsTexts.source == s,
-                    ProductsTexts.language == lang,
-                )
-            )
-            return res.scalar_one_or_none()
