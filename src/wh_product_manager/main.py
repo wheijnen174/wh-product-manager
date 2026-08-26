@@ -4,14 +4,19 @@ FastAPI application for managing products via Shopify GraphQL API
 """
 
 from contextlib import asynccontextmanager
+from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from wh_product_manager.config import Settings
+from wh_product_manager.api.global_funcs import (
+    authenticate_request,
+    request_headers_ctx,
+)
 from wh_product_manager.db.init_db import create_tables
 from wh_product_manager.services import Services
+from wh_product_manager.settings import Settings
 
 # Global container for dependency injection
 services: Services | None = None
@@ -76,7 +81,20 @@ def create_app(app_settings: Settings) -> FastAPI:
         redoc_url="/api/redoc",
         openapi_url="/api/openapi.json",
         lifespan=lifespan,
+        dependencies=[
+            Depends(authenticate_request),
+        ],
     )
+
+    @app.middleware("http")
+    async def capture_request_headers(  # pyright: ignore[reportUnusedFunction]
+        request: Request, call_next: Any
+    ) -> Any:
+        token = request_headers_ctx.set(dict(request.headers))
+        try:
+            return await call_next(request)
+        finally:
+            request_headers_ctx.reset(token)
 
     # Only add CORS middleware if enabled
     if app_settings.ENABLE_CORS:
@@ -89,11 +107,9 @@ def create_app(app_settings: Settings) -> FastAPI:
         )
 
     # API routes
-    from wh_product_manager.api.routes import health, products, suppliers
+    from wh_product_manager.api import main_router
 
-    app.include_router(health.router, prefix="/api/v1/health")
-    app.include_router(products.router, prefix="/api/v1/products")
-    app.include_router(suppliers.router, prefix="/api/v1/suppliers")
+    app.include_router(main_router.router, prefix="/api/v1")
 
     # Global exception handler
     @app.exception_handler(Exception)

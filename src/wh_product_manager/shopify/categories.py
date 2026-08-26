@@ -1,15 +1,15 @@
 from asyncio import sleep
 from typing import Any
 
-from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
 from wh_product_manager.db.repositories.collections import CollectionsRepository
 from wh_product_manager.db.repositories.shopify_category_taxonomies import (
     ShopifyCategoryTaxonomiesRepository,
 )
+from wh_product_manager.products.schemas.product import UnifiedProduct
+from wh_product_manager.settings import Settings
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
 from wh_product_manager.shopify.publishing import PublicationService
-from wh_product_manager.suppliers.schemas import UnifiedProduct
 
 
 class CategoriesService:

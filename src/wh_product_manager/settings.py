@@ -3,9 +3,6 @@ Application configuration and settings
 Loads from environment variables and external files
 """
 
-from pathlib import Path
-from typing import Any
-
 from pydantic_settings import BaseSettings
 
 from wh_product_manager.utils.data_loader import get_log_file
@@ -28,6 +25,9 @@ class Settings(BaseSettings):
     ENABLE_CORS: bool = False
     CORS_ORIGINS: list[str] = []
 
+    # WH Product Manager
+    WHPM_API_KEY: str
+
     # Database
     DB_HOST: str
     DB_PORT: int
@@ -36,11 +36,8 @@ class Settings(BaseSettings):
     DB_PASSWORD: str
     DB_ECHO: bool = False
 
-    # Shopify
-    SHOPIFY_SHOP_URL: str = ""
-    SHOPIFY_API_VERSION: str = "2026-01"
-    SHOPIFY_ACCESS_TOKEN: str = ""
-    SHOPIFY_API_BATCH_DELAY: float = 0.0
+    # Products
+    PRODUCT_GRACE_PERIOD_IN_DAYS: int = 7
 
     # Email/Debugging
     DEBUGGING_SMTP_SERVER: str = ""
@@ -53,8 +50,6 @@ class Settings(BaseSettings):
     WORDPRESS_SHARED_SECRET: str = ""
     WORDPRESS_SEARCH_API_KEY: str = ""
 
-    # Product Settings
-    PRODUCT_GRACE_PERIOD_IN_DAYS: int = 7
     ONEDC_XML_URL: str = ""
 
     class Config:
@@ -62,27 +57,6 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
         case_sensitive = True
 
-    def __init__(self, **data: Any):
-        """
-        Initialize settings and load Shopify token from file
-        """
-        super().__init__(**data)
-
-        # Load Shopify token from file if it exists
-        token_file = Path(".env.shopify-token")
-        if token_file.exists():
-            self.SHOPIFY_ACCESS_TOKEN = token_file.read_text(encoding="utf-8").strip()  # type: ignore
-        elif not self.SHOPIFY_ACCESS_TOKEN:
-            # Fallback to env var if file doesn't exist
-            raise ValueError(
-                "SHOPIFY_ACCESS_TOKEN must be either in '.env.shopify-token' file "
-                "or in .env file as SHOPIFY_ACCESS_TOKEN"
-            )
-
     def get_database_url(self) -> str:
         """Construct the database URL from individual components"""
         return f"mysql+asyncmy://{self.DB_USERNAME}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
-
-
-def get_settings() -> Settings:
-    return Settings()

@@ -6,8 +6,8 @@ Retrieves and manages product inventory from Shopify
 from asyncio import sleep
 from typing import Any
 
-from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
+from wh_product_manager.settings import Settings
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
 
 

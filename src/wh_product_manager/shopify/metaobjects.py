@@ -1,10 +1,11 @@
+import json
 from asyncio import sleep
 from typing import Any
 
 from slugify import slugify
 
-from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
+from wh_product_manager.settings import Settings
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
 
 
@@ -20,6 +21,7 @@ class MetaobjectService:
         self.logger = logger
 
     async def get_definitions(self) -> dict[str, Any]:
+        self.logger.info("Starting metaobject definitions fetch")
         query = self._query_get_definitions()
 
         cursor = None
@@ -64,6 +66,10 @@ class MetaobjectService:
                     "values": object_values,
                 }
 
+            self.logger.debug(
+                f"Fetched metaobject definitions batch: batch_size={len(batch_data)}, accumulated={len(existing_definitions)}"
+            )
+
             if not data["pageInfo"]["hasNextPage"]:
                 break
 
@@ -86,11 +92,15 @@ class MetaobjectService:
             for k, v in existing_definitions.items()
         }
 
+        self.logger.info(
+            f"Finished metaobject definitions fetch: total={len(existing_definitions)}"
+        )
         return dict(sorted(existing_definitions.items()))
 
     async def create_definition(
         self, name: str, details: dict[str, Any]
     ) -> dict[str, Any]:
+        self.logger.info(f"Starting metaobject definition creation for name={name}")
 
         definition_name = details["namespace"] + " - " + name
         definition_key = (
@@ -143,6 +153,10 @@ class MetaobjectService:
                 f"Metaobject definition creation succeeded, but missing fields ('id' or 'type') in response: {response}"
             )
 
+        self.logger.debug(
+            f"Created metaobject definition: name={name}, id={object_id}, type={object_type}"
+        )
+
         return {
             "id": object_id,
             "type": object_type,
@@ -152,6 +166,9 @@ class MetaobjectService:
     async def create_missing_values(
         self, definition_type: str, field_key: str, values: dict[str, str | None]
     ) -> dict[str, str | None]:
+        self.logger.info(
+            f"Starting metaobject value creation for definition_type={definition_type}, values={len(values)}"
+        )
 
         for value_name, value_id in values.items():
             if value_id is not None:
@@ -186,6 +203,13 @@ class MetaobjectService:
 
             values[value_name] = data.get("id")
 
+            self.logger.debug(
+                f"Metaobject value processed: definition_type={definition_type}, value_name={value_name}, shopify_id={values[value_name]}"
+            )
+
+        self.logger.info(
+            f"Finished metaobject value creation for definition_type={definition_type}"
+        )
         return values
 
     async def _get_extra_values(self, definitions: dict[str, Any]) -> dict[str, Any]:
@@ -376,3 +400,55 @@ class MetaobjectService:
                 }}
             }}
         """
+
+    async def delete_all_metaobjects(self) -> None:
+        query_fetch = """
+            query {
+                metaobjectDefinitions(first: 250) {
+                    nodes {
+                        id
+                        type
+                    }
+                    pageInfo {
+                        hasNextPage
+                    }
+                }
+            }
+        """
+
+        response_fetch = await self.shopify_client.run(query_fetch)
+
+        data = (
+            response_fetch.get("data", {})
+            .get("metaobjectDefinitions", {})
+            .get("nodes", [])
+        )
+
+        metaobject_ids = [
+            item["id"] for item in data if item["type"].split("-")[0] == "product"
+        ]
+
+        mutation_delete = """
+            mutation {
+        """
+
+        for i, metaobject_id in enumerate(metaobject_ids):
+            mutation_delete += f"""
+                delete_metaobject_{i + 1}: metaobjectDefinitionDelete(id: "{metaobject_id}") {{
+                    userErrors {{
+                        field
+                        message
+                    }}
+                }}
+            """
+
+        mutation_delete += """
+            }
+        """
+
+        response_delete = await self.shopify_client.run(
+            mutation_delete, enable_timeout=False
+        )
+
+        print(json.dumps(response_delete, indent=2))
+        raise

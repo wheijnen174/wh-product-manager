@@ -1,5 +1,17 @@
+from typing import TypedDict
+
 from wh_product_manager.core.logger import Logger
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
+
+
+class PublicationFailure(TypedDict):
+    shopify_id: str
+    error: str
+
+
+class PublicationActionResult(TypedDict):
+    succeeded_ids: list[str]
+    failed: list[PublicationFailure]
 
 
 class PublicationService:
@@ -14,22 +26,33 @@ class PublicationService:
     async def publish_shopify_objects(
         self,
         object_ids: list[str],
-    ) -> None:
+    ) -> PublicationActionResult:
+        self.logger.info(
+            f"Starting Shopify publish workflow for objects={len(object_ids)}"
+        )
         if len(object_ids) == 0:
             self.logger.info("No objects to publish")
-            return
+            return PublicationActionResult(succeeded_ids=[], failed=[])
 
         batch_size = 75  # Shopify allows up to 100, but using 75 to be safe with API limits and response size
 
         # Fetch publication IDs once and reuse for all objects
         # These are the IDs of all sales channels (Online Store, POS, etc.)
         publication_ids = await self.get_publication_ids()
-        publication_ids = ",".join(
+        publication_ids_input = ",".join(
             [f"""{{publicationId: "{value}"}}""" for value in publication_ids.values()]
+        )
+
+        result: PublicationActionResult = PublicationActionResult(
+            succeeded_ids=[],
+            failed=[],
         )
 
         for i in range(0, len(object_ids), batch_size):
             batch_ids = object_ids[i : i + batch_size]
+            self.logger.debug(
+                f"Publishing batch: start_index={i}, batch_size={len(batch_ids)}"
+            )
 
             try:
                 mutation = """
@@ -41,7 +64,7 @@ class PublicationService:
                         mutation += f"""
                             publishObject_{x + 1}: publishablePublish(
                                 id: "{object_id}",
-                                input: [{publication_ids}]
+                                input: [{publication_ids_input}]
                             ) {{
                                 userErrors {{
                                     field
@@ -71,12 +94,117 @@ class PublicationService:
                         self.logger.error(
                             f"Failed to publish object {object_id}: {user_errors}"
                         )
+                        result["failed"].append(
+                            {
+                                "shopify_id": object_id,
+                                "error": str(user_errors),
+                            }
+                        )
                     else:
                         self.logger.debug(f"Successfully published object {object_id}")
+                        result["succeeded_ids"].append(object_id)
             except Exception as e:
                 self.logger.error(
                     f"Error publishing batch starting with object {batch_ids[0]}: {e}"
                 )
+                for object_id in batch_ids:
+                    result["failed"].append(
+                        {
+                            "shopify_id": object_id,
+                            "error": str(e),
+                        }
+                    )
+
+        return result
+
+    async def unpublish_shopify_objects(
+        self,
+        object_ids: list[str],
+    ) -> PublicationActionResult:
+        self.logger.info(
+            f"Starting Shopify unpublish workflow for objects={len(object_ids)}"
+        )
+        if len(object_ids) == 0:
+            self.logger.info("No objects to unpublish")
+            return PublicationActionResult(succeeded_ids=[], failed=[])
+
+        batch_size = 75
+        publication_ids = await self.get_publication_ids()
+        publication_ids_input = ",".join(
+            [f'{{publicationId: "{value}"}}' for value in publication_ids.values()]
+        )
+
+        result: PublicationActionResult = PublicationActionResult(
+            succeeded_ids=[],
+            failed=[],
+        )
+
+        for i in range(0, len(object_ids), batch_size):
+            batch_ids = object_ids[i : i + batch_size]
+            self.logger.debug(
+                f"Unpublishing batch: start_index={i}, batch_size={len(batch_ids)}"
+            )
+
+            try:
+                mutation = """
+                    mutation {
+                """
+
+                for x, object_id in enumerate(batch_ids):
+                    mutation += f"""
+                        unpublishObject_{x + 1}: publishableUnpublish(
+                            id: \"{object_id}\",
+                            input: [{publication_ids_input}]
+                        ) {{
+                            userErrors {{
+                                field
+                                message
+                            }}
+                        }}
+                    """
+
+                mutation += """
+                    }
+                """
+
+                response = await self.shopify_client.run(mutation)
+
+                for x, object_id in enumerate(batch_ids):
+                    user_errors = (
+                        response.get("data", {})
+                        .get(f"unpublishObject_{x + 1}", {})
+                        .get("userErrors", [])
+                    )
+
+                    if user_errors:
+                        self.logger.error(
+                            f"Failed to unpublish object {object_id}: {user_errors}"
+                        )
+                        result["failed"].append(
+                            {
+                                "shopify_id": object_id,
+                                "error": str(user_errors),
+                            }
+                        )
+                    else:
+                        self.logger.debug(
+                            f"Successfully unpublished object {object_id}"
+                        )
+                        result["succeeded_ids"].append(object_id)
+
+            except Exception as e:
+                self.logger.error(
+                    f"Error unpublishing batch starting with object {batch_ids[0]}: {e}"
+                )
+                for object_id in batch_ids:
+                    result["failed"].append(
+                        {
+                            "shopify_id": object_id,
+                            "error": str(e),
+                        }
+                    )
+
+        return result
 
     async def get_publication_ids(self) -> dict[str, str]:
         """
@@ -85,6 +213,7 @@ class PublicationService:
         Returns:
             dict[str, str]: Mapping of publication names to their IDs
         """
+        self.logger.info("Fetching Shopify publication IDs")
 
         query = """
             query {
@@ -109,6 +238,9 @@ class PublicationService:
             self.logger.error("No publications found in Shopify store")
             raise ValueError("No publications found in Shopify store")
         else:
+            self.logger.debug(
+                f"Fetched Shopify publication IDs: count={len(publication_ids)}"
+            )
             return {
                 item["node"]["name"]: item["node"]["id"] for item in publication_ids
             }

@@ -2,8 +2,8 @@ import json
 from asyncio import sleep
 from typing import Any
 
-from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
+from wh_product_manager.settings import Settings
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
 
 
@@ -21,6 +21,9 @@ class MetafieldService:
     async def get_definitions(
         self, owner_type: str, namespace: str | None = None
     ) -> dict[str, Any]:
+        self.logger.info(
+            f"Starting metafield definitions fetch: owner_type={owner_type}, namespace={namespace}"
+        )
         # await self.delete_all_metafields()
         # raise
 
@@ -57,6 +60,10 @@ class MetafieldService:
                     "key": object_key,
                 }
 
+            self.logger.debug(
+                f"Fetched metafield definitions batch: batch_size={len(batch_data)}, accumulated={len(existing_definitions)}"
+            )
+
             if not data["pageInfo"]["hasNextPage"]:
                 break
 
@@ -64,12 +71,16 @@ class MetafieldService:
 
             await sleep(self.settings.SHOPIFY_API_BATCH_DELAY)  # Rate limiting delay
 
+        self.logger.info(
+            f"Finished metafield definitions fetch: total={len(existing_definitions)}"
+        )
         return dict(sorted(existing_definitions.items()))
 
     async def create_definition(
         self,
         variables: dict[str, Any],
     ) -> dict[str, Any]:
+        self.logger.info("Starting metafield definition creation")
 
         mutation = self._mutation_create_definition()
 
@@ -98,6 +109,10 @@ class MetafieldService:
             raise Exception(
                 f"Metafield definition creation succeeded, but missing fields ('id', 'namespace', or 'key') in response: {response}"
             )
+
+        self.logger.debug(
+            f"Created metafield definition: id={object_id}, namespace={object_namespace}, key={object_key}"
+        )
 
         return {
             "id": object_id,
@@ -190,7 +205,9 @@ class MetafieldService:
             }
         """
 
-        response_fetch = await self.shopify_client.run(query_fetch)
+        response_fetch = await self.shopify_client.run(
+            query_fetch, enable_timeout=False
+        )
 
         data = (
             response_fetch.get("data", {})

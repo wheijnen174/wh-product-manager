@@ -1,7 +1,7 @@
 from sqlalchemy import BigInteger, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from wh_product_manager.db.models.base import Base
+from wh_product_manager.db.base_model import Base
 
 
 class ShopifyCategoryTaxonomies(Base):

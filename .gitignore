@@ -22,6 +22,12 @@ data/onedc_product_data_*.xml
 data/async_results*
 data/logs/
 
+# Data files
+*.ico
+*.xml
+*.csv
+*.sql
+
 # Nuitka build output
 dist/
 build/
@@ -42,9 +48,6 @@ ENV/
 .idea/
 *.swp
 *.swo
-
-# UV
-uv.lock
 
 # OS
 .DS_Store

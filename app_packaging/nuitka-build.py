@@ -28,18 +28,18 @@ def build():
     print("=" * 80)
 
     if not main_file.exists():
-        print(f"❌ ERROR: {main_file.name} not found at {main_file}")
+        print(f"ERROR: {main_file.name} not found at {main_file}")
         return False
 
-    print(f"✓ Entry point: {main_file}")
-    print(f"✓ Using Python: {sys.executable}")
+    print(f"Entry point: {main_file}")
+    print(f"Using Python: {sys.executable}")
 
     if icon_file.exists():
         icon_arg = f"--windows-icon-from-ico={icon_file}"
-        print("✓ Icon found")
+        print("Icon found")
     else:
         icon_arg = None
-        print("⚠ Icon not found (optional)")
+        print("Icon not found (optional)")
 
     cmd = [
         sys.executable,
@@ -61,7 +61,7 @@ def build():
     if icon_arg:
         cmd.insert(-1, icon_arg)
 
-    print(f"\n📦 Output directory: {output_dir}\n")
+    print(f"\nOutput directory: {output_dir}\n")
     print("Running Nuitka compilation...")
     print("-" * 80)
 
@@ -79,12 +79,12 @@ def build():
 
     if result.returncode == 0:
         exe_path = output_dir / f"{EXE_NAME}.exe"
-        print("\n✅ Build successful!")
-        print(f"📁 Output: {exe_path}")
+        print("\nBuild successful!")
+        print(f"Output: {exe_path}")
         print(f"\nRun the test: {exe_path}")
         return True
     else:
-        print(f"\n❌ Build failed with return code {result.returncode}")
+        print(f"\nBuild failed with return code {result.returncode}")
         return False
 
 

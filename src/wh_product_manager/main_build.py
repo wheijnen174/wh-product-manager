@@ -15,10 +15,10 @@ def main():
 
         # Import settings first to catch config errors
         print("Loading configuration...")
-        from wh_product_manager.config import Settings
+        from wh_product_manager.settings import Settings
 
         settings = Settings()
-        print("✓ Configuration loaded")
+        print("Configuration loaded")
         print(f"  HOST: {settings.HOST}")
         print(f"  PORT: {settings.PORT}")
         sys.stdout.flush()
@@ -31,12 +31,12 @@ def main():
             "wh_product_manager.main:app",
             host=settings.HOST,
             port=settings.PORT,
-            log_level=settings.LOG_LEVEL.lower(),
+            log_level=settings.LOG_LEVEL_CONSOLE.lower(),
             reload=False,  # Don't use reload in EXE
         )
 
     except Exception as e:
-        print(f"\n❌ ERROR: {type(e).__name__}")
+        print(f"\nERROR: {type(e).__name__}")
         print(f"Message: {str(e)}")
         print("\nFull traceback:")
         traceback.print_exc()

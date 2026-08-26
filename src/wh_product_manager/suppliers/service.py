@@ -3,15 +3,12 @@ Supplier Data Service
 Orchestrates all supplier operations
 """
 
-from typing import Any
-
-from wh_product_manager.config import Settings
 from wh_product_manager.core.logger import Logger
 from wh_product_manager.db.repositories.country_mapping import CountryMappingRepository
+from wh_product_manager.settings import Settings
 from wh_product_manager.shopify.client import ShopifyGraphQLClient
 from wh_product_manager.suppliers.base import BaseSupplier
-from wh_product_manager.suppliers.providers.OneDC import Supplier_OneDC
-from wh_product_manager.suppliers.schemas import SupplierDataResult
+from wh_product_manager.suppliers.providers.Provider_1 import Supplier_Provider_1
 
 
 class SupplierService:
@@ -43,8 +40,8 @@ class SupplierService:
         self.country_mapping_repo = country_mapping_repo
 
         self.suppliers: dict[str, BaseSupplier] = {
-            "one-dc": Supplier_OneDC(
-                name="One-DC",
+            "Provider-1": Supplier_Provider_1(
+                name="Provider 1",
                 shopify_client=self.shopify_client,
                 settings=self.settings,
                 logger=self.logger,
@@ -66,7 +63,9 @@ class SupplierService:
         Returns:
             True if supplier exists, False otherwise
         """
-        exists = supplier_name in self.suppliers
+        exists = supplier_name.lower() in [
+            name.lower() for name in self.suppliers.keys()
+        ]
         self.logger.debug(f"Checked existence of supplier '{supplier_name}': {exists}")
         return exists
 
@@ -86,28 +85,6 @@ class SupplierService:
             self.logger.error(f"Supplier '{supplier_name}' not found")
             raise ValueError(f"Supplier '{supplier_name}' not found")
 
+        self.logger.debug(f"Resolved supplier instance for '{supplier_name}'")
+
         return supplier
-
-    async def fetch_all_data(self) -> dict[str, Any]:
-        """
-        Fetch raw product data from all suppliers
-
-        Returns:
-            Dictionary mapping supplier names to their raw product data
-        """
-        self.logger.info("Fetching raw product data from all suppliers")
-        all_data: dict[str, Any] = {}
-
-        for name, supplier in self.suppliers.items():
-            self.logger.info(f"Fetching data from supplier: {name}")
-            try:
-                data = await supplier.get_unified_data()
-                all_data[name] = data
-                self.logger.info(f"Successfully fetched data from {name}")
-            except Exception as e:
-                self.logger.error(f"Error fetching data from {name}: {str(e)}")
-                all_data[name] = SupplierDataResult(
-                    supplier_name=name, status="failed", error=str(e)
-                )
-
-        return all_data

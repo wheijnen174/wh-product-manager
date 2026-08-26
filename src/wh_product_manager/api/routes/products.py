@@ -1,139 +1,81 @@
-"""Products API routes"""
+from typing import Annotated
 
-import asyncio
-
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Header
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
+from wh_product_manager.api.global_funcs import (
+    get_services,
+    verify_supplier_exists,
+)
+from wh_product_manager.api.operation_locks import product_operation_lock
+
 router = APIRouter()
-product_operation_lock = asyncio.Lock()
 
 
-def _get_services():
-    """Helper to get services from main module"""
-    from wh_product_manager import main
+@router.get("/")
+async def status() -> JSONResponse:
+    """Status endpoint - API health check"""
+    services = get_services()
 
-    if main.services is None:
-        raise RuntimeError("Services not initialized")
-    return main.services
+    services.logger.debug("Health check endpoint accessed - API is running")
+
+    return JSONResponse(
+        status_code=200,
+        content=jsonable_encoder(
+            {
+                "status": "WH Product Manager API is running",
+            }
+        ),
+    )
 
 
-@router.get("/inventory")
-async def shopify_inventory(
-    supplier: str | None = None, return_ids: bool = True
+@router.get("/get")
+async def get(
+    supplier: Annotated[str, Depends(verify_supplier_exists)],
+    full_detail: Annotated[bool, Header()] = True,
 ) -> JSONResponse:
-    """Endpoint to trigger Shopify inventory sync"""
-    services = _get_services()
+    """Get products for a supplier"""
+    services = get_services()
+    services.logger.info(
+        f"API /products/get called for supplier {supplier} (full_detail={full_detail})"
+    )
 
-    if supplier:
-        supplier_exists = await services.supplier_service.supplier_exists(supplier)
+    products = await services.products_repo.get_products_by_supplier(
+        supplier, full_detail
+    )
 
-        if not supplier_exists:
-            return JSONResponse(
-                status_code=404,
-                content={"error": f"Supplier '{supplier}' not found"},
-            )
-
-    async with product_operation_lock:
-        inventory_data = await services.inventory_service.get_current_inventory(
-            supplier=supplier, return_ids=return_ids
-        )
-
-        return JSONResponse(
-            status_code=200,
-            content=inventory_data,
-        )
+    return JSONResponse(
+        status_code=200,
+        content=jsonable_encoder(
+            {
+                "products": products,
+            }
+        ),
+    )
 
 
-@router.get("/create")
-async def create_products(
-    supplier: str, new_products_limit: int | None = None
+@router.get("/upsert")
+async def upsert(
+    supplier: Annotated[str, Depends(verify_supplier_exists)],
 ) -> JSONResponse:
-    """Endpoint to trigger product creation for a supplier"""
+    """Upsert products for a supplier"""
+    services = get_services()
 
-    if new_products_limit is not None and new_products_limit <= 0:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "detail": [
-                    {
-                        "type": "invalid",
-                        "loc": ["query", "new_products_limit"],
-                        "msg": "Field must be a positive integer",
-                        "input": new_products_limit,
-                    }
-                ]
-            },
-        )
+    services.logger.info(f"{supplier} - API /products/upsert called for this supplier")
 
-    services = _get_services()
-    supplier_exists = await services.supplier_service.supplier_exists(supplier.lower())
-
-    if not supplier_exists:
-        return JSONResponse(
-            status_code=404,
-            content={
-                "detail": [
-                    {
-                        "type": "invalid",
-                        "loc": ["query", "supplier"],
-                        "msg": "Supplier not found",
-                        "input": supplier.lower(),
-                    }
-                ]
-            },
-        )
+    supplier_object = await services.supplier_service.get_supplier(supplier)
 
     async with product_operation_lock:
-        supplier_obj = await services.supplier_service.get_supplier(supplier.lower())
-
-        result = await services.product_service.create_products_for_supplier(
-            supplier_obj, new_products_limit
+        workflow_summary = await services.product_service.upsert_supplier_products(
+            supplier_object
         )
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "status": f"Supplier '{supplier.lower()}' found, product creation finished",
-                "result": result,
-            },
-        )
-
-
-@router.get("/update")
-async def update_products(supplier: str) -> JSONResponse:
-    """Endpoint to trigger product update for a supplier"""
-    services = _get_services()
-    supplier_exists = await services.supplier_service.supplier_exists(supplier.lower())
-
-    if not supplier_exists:
-        return JSONResponse(
-            status_code=404,
-            content={
-                "detail": [
-                    {
-                        "type": "invalid",
-                        "loc": ["query", "supplier"],
-                        "msg": "Supplier not found",
-                        "input": supplier.lower(),
-                    }
-                ]
-            },
-        )
-
-    async with product_operation_lock:
-        supplier_obj = await services.supplier_service.get_supplier(supplier.lower())
-
-        # TODO: Also implement updating of Shopify categories (not collections)!
-
-        update_result = await services.product_service.update_products_for_supplier(
-            supplier_obj
-        )
-
-        return JSONResponse(
-            status_code=200,
-            content={
-                "status": f"Supplier '{supplier.lower()}' found, product update finished",
-                "result": update_result,
-            },
-        )
+    return JSONResponse(
+        status_code=200,
+        content=jsonable_encoder(
+            {
+                "summary": workflow_summary,
+            }
+        ),
+    )

@@ -1,67 +1,49 @@
-from fastapi import APIRouter
+from typing import Annotated
+
+from fastapi import APIRouter, Depends
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
+
+from wh_product_manager.api.global_funcs import (
+    get_services,
+    verify_supplier_exists,
+)
 
 router = APIRouter()
 
 
-def _get_services():
-    """Helper to get services from main module"""
-    from wh_product_manager import main
+@router.get("/")
+async def status() -> JSONResponse:
+    """Status endpoint - API health check"""
+    services = get_services()
 
-    if main.services is None:
-        raise RuntimeError("Services not initialized")
-    return main.services
-
-
-@router.get("/products")
-async def get_all_products() -> JSONResponse:
-    """Fetch raw product data from all suppliers"""
-    services = _get_services()
-    data = await services.supplier_service.fetch_all_data()
+    services.logger.debug("Health check endpoint accessed - API is running")
 
     return JSONResponse(
         status_code=200,
-        content={name: data.to_dict() for name, data in data.items()},
+        content=jsonable_encoder(
+            {
+                "status": "WH Product Manager API is running",
+            }
+        ),
     )
 
 
-@router.get("/{supplier_name}/products")
-async def get_supplier_products(supplier_name: str) -> JSONResponse:
-    """Fetch raw product data from the specified supplier"""
-    services = _get_services()
+@router.get("/get")
+async def get(
+    supplier: Annotated[str, Depends(verify_supplier_exists)],
+) -> JSONResponse:
+    """Get inventory data for a specific supplier."""
+    services = get_services()
+    services.logger.info(f"API suppliers/get called: supplier={supplier}")
 
-    try:
-        supplier = await services.supplier_service.get_supplier(supplier_name.lower())
-    except ValueError as e:
-        return JSONResponse(
-            status_code=404,
-            content={"error": str(e)},
-        )
-
-    unified_data = await supplier.get_unified_data()
-
-    return JSONResponse(
-        status_code=200,
-        content={name: item for name, item in unified_data.to_dict().items()},
+    supplier_object = await services.supplier_service.get_supplier(supplier)
+    supplier_data = await supplier_object.get_unified_data()
+    services.logger.debug(
+        f"API suppliers/get completed: supplier={supplier}, products={len(supplier_data.products or {})}"
     )
 
-
-@router.get("/{supplier_name}/products/raw")
-async def get_supplier_products_raw(supplier_name: str) -> JSONResponse:
-    """Fetch raw product data from the specified supplier"""
-    services = _get_services()
-
-    try:
-        supplier = await services.supplier_service.get_supplier(supplier_name.lower())
-    except ValueError as e:
-        return JSONResponse(
-            status_code=404,
-            content={"error": str(e)},
-        )
-
-    raw_data = await supplier.fetch_raw_data()
-
     return JSONResponse(
         status_code=200,
-        content=raw_data,
+        content=jsonable_encoder(supplier_data.to_dict()),
     )
